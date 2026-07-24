@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Feedback</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <nav>
+    <span class="brand">🛒 Feedback Analyzer</span>
+    <div>
+      <a href="{{ url_for('customer_dashboard') }}">Back to Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Edit Your Feedback</h2>
+      <form method="POST">
+        <label>Rating</label>
+        <select name="rating" required>
+          <option value="5" {% if item.rating == 5 %}selected{% endif %}>5 - Excellent</option>
+          <option value="4" {% if item.rating == 4 %}selected{% endif %}>4 - Good</option>
+          <option value="3" {% if item.rating == 3 %}selected{% endif %}>3 - Average</option>
+          <option value="2" {% if item.rating == 2 %}selected{% endif %}>2 - Poor</option>
+          <option value="1" {% if item.rating == 1 %}selected{% endif %}>1 - Terrible</option>
+        </select>
+
+        <label>Your Feedback</label>
+        <textarea name="review_text" required>{{ item.review_text }}</textarea>
+
+        <button type="submit">Update Feedback</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
