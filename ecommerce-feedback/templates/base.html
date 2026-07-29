@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Feedback Analyzer{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <span class="brand">🛒 Feedback Analyzer</span>
+    <div class="nav-links">
+      {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('admin_sentiment') }}" class="{{ 'active' if request.endpoint == 'admin_sentiment' }}">Sentiment Breakdown</a>
+        <a href="{{ url_for('admin_products') }}" class="{{ 'active' if request.endpoint == 'admin_products' }}">Product Performance</a>
+        <a href="{{ url_for('admin_feedback') }}" class="{{ 'active' if request.endpoint == 'admin_feedback' }}">All Customer Feedback</a>
+        <a href="{{ url_for('admin_insights') }}" class="{{ 'active' if request.endpoint == 'admin_insights' }}">Insights</a>
+      {% elif session.get('role') == 'customer' %}
+        <a href="{{ url_for('leave_feedback') }}" class="{{ 'active' if request.endpoint == 'leave_feedback' }}">Leave Feedback</a>
+        <a href="{{ url_for('feedback_history') }}" class="{{ 'active' if request.endpoint == 'feedback_history' }}">History</a>
+      {% endif %}
+    </div>
+    <div>
+      <span>Hi, {{ session.get('username', '') }}</span>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

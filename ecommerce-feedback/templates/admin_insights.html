@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Insights{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Top Keywords Across All Reviews</h2>
+  <div style="display:flex; gap:30px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:250px;">
+      <h3 style="font-size:1rem; color:#2f6b45;">👍 Most Common Praise</h3>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+        {% for word, count in keywords.top_positive %}
+          <span class="badge Positive">{{ word }} ({{ count }})</span>
+        {% else %}
+          <p style="color:#888;">No data yet</p>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="flex:1; min-width:250px;">
+      <h3 style="font-size:1rem; color:#a3453f;">👎 Most Common Complaints</h3>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+        {% for word, count in keywords.top_negative %}
+          <span class="badge Negative">{{ word }} ({{ count }})</span>
+        {% else %}
+          <p style="color:#888;">No data yet</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

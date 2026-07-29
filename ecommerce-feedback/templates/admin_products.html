@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Product Performance{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Product Performance Score</h2>
+  <p style="font-size:0.85rem; color:#567C8D;">Score out of 100, combining average rating, positive sentiment ratio, and review volume.</p>
+  {% if product_analytics %}
+    <table>
+      <tr>
+        <th>Product</th>
+        <th>Score</th>
+        <th>Total Reviews</th>
+        <th>Avg Rating</th>
+        <th>Positive</th>
+        <th>Negative</th>
+        <th>Neutral</th>
+        <th>Mixed</th>
+      </tr>
+      {% for p in product_analytics %}
+      <tr>
+        <td>{{ p.name }}</td>
+        <td>
+          {% if p.performance_score is not none %}
+            <span class="badge {{ 'Positive' if p.performance_score >= 70 else ('Neutral' if p.performance_score >= 40 else 'Negative') }}">{{ p.performance_score }}/100</span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>{{ p.total }}</td>
+        <td>{{ '%.1f'|format(p.avg_rating) if p.avg_rating else '—' }}</td>
+        <td style="color:#2f6b45;">{{ p.positive }}</td>
+        <td style="color:#a3453f;">{{ p.negative }}</td>
+        <td>{{ p.neutral }}</td>
+        <td>{{ p.mixed }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No product data yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Trending Products</h2>
+  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:220px;">
+      <h3 style="font-size:1rem; color:var(--teal);">🔥 Most Reviewed</h3>
+      <ol>
+        {% for p in trending.most_reviewed %}
+          <li>{{ p.name }} ({{ p.total }} reviews)</li>
+        {% else %}
+          <li>No data yet</li>
+        {% endfor %}
+      </ol>
+    </div>
+    <div style="flex:1; min-width:220px;">
+      <h3 style="font-size:1rem; color:#2f6b45;">⭐ Highest Rated</h3>
+      <ol>
+        {% for p in trending.highest_rated %}
+          <li>{{ p.name }} ({{ '%.1f'|format(p.avg_rating) }}★)</li>
+        {% else %}
+          <li>No data yet</li>
+        {% endfor %}
+      </ol>
+    </div>
+    <div style="flex:1; min-width:220px;">
+      <h3 style="font-size:1rem; color:#a3453f;">⚠️ Needs Attention</h3>
+      <ol>
+        {% for p in trending.lowest_rated %}
+          <li>{{ p.name }} ({{ '%.1f'|format(p.avg_rating) }}★)</li>
+        {% else %}
+          <li>No data yet</li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</div>
+{% endblock %}

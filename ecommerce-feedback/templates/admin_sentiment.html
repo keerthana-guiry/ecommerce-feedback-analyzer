@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Sentiment Breakdown{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="num">{{ sentiment_counts.get('Positive', 0) }}</div>
+    <div>Positive</div>
+  </div>
+  <div class="stat-box">
+    <div class="num">{{ sentiment_counts.get('Negative', 0) }}</div>
+    <div>Negative</div>
+  </div>
+  <div class="stat-box">
+    <div class="num">{{ sentiment_counts.get('Neutral', 0) }}</div>
+    <div>Neutral</div>
+  </div>
+  <div class="stat-box">
+    <div class="num">{{ sentiment_counts.get('Mixed', 0) }}</div>
+    <div>Mixed</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Sentiment Breakdown</h2>
+  <canvas id="sentimentChart" height="100"></canvas>
+</div>
+
+<script>
+  const ctx = document.getElementById('sentimentChart');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Positive', 'Negative', 'Neutral', 'Mixed'],
+      datasets: [{
+        data: [
+          {{ sentiment_counts.get('Positive', 0) }},
+          {{ sentiment_counts.get('Negative', 0) }},
+          {{ sentiment_counts.get('Neutral', 0) }},
+          {{ sentiment_counts.get('Mixed', 0) }}
+        ],
+        backgroundColor: ['#567C8D', '#2F4156', '#C8D9E6', '#9b7fb0']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+</script>
+{% endblock %}

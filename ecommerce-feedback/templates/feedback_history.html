@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Your Feedback History{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Your Feedback History</h2>
+  {% if history %}
+    <table>
+      <tr>
+        <th>Product</th>
+        <th>Rating</th>
+        <th>Feedback</th>
+        <th>Sentiment</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+      {% for item in history %}
+      <tr>
+        <td>{{ item.product_name }}</td>
+        <td class="stars">{{ '★' * item.rating }}{{ '☆' * (5 - item.rating) }}</td>
+        <td>{{ item.review_text }}</td>
+        <td><span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span></td>
+        <td>{{ item.created_at }}</td>
+        <td>
+          <a href="{{ url_for('edit_feedback', feedback_id=item.id) }}">Edit</a>
+          <form method="POST" action="{{ url_for('delete_feedback', feedback_id=item.id) }}" style="display:inline;" onsubmit="return confirm('Delete this feedback?');">
+            <button type="submit" style="padding: 2px 10px; font-size: 0.8rem; margin-left: 8px;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>You haven't submitted any feedback yet. <a href="{{ url_for('leave_feedback') }}">Leave your first review →</a></p>
+  {% endif %}
+</div>
+{% endblock %}

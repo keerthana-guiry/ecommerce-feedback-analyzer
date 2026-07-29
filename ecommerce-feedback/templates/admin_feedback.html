@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}All Customer Feedback{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>All Customer Feedback</h2>
+
+  <form method="GET" style="display:flex; gap:10px; align-items:flex-end; margin-bottom: 15px; flex-wrap: wrap;">
+    <div style="flex:1; min-width:150px;">
+      <label style="font-size:0.85rem;">Product</label>
+      <select name="product_id">
+        <option value="">All Products</option>
+        {% for prod in products %}
+          <option value="{{ prod.id }}" {% if filters.product_id == prod.id %}selected{% endif %}>{{ prod.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex:1; min-width:150px;">
+      <label style="font-size:0.85rem;">Sentiment</label>
+      <select name="sentiment">
+        <option value="">All</option>
+        {% for s in ['Positive', 'Negative', 'Neutral', 'Mixed'] %}
+          <option value="{{ s }}" {% if filters.sentiment == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex:1; min-width:150px;">
+      <label style="font-size:0.85rem;">Customer</label>
+      <input type="text" name="username" value="{{ filters.username or '' }}" placeholder="Search username">
+    </div>
+    <button type="submit" style="margin-bottom:16px;">Filter</button>
+    <a href="{{ url_for('admin_feedback') }}" style="margin-bottom:16px;">Clear</a>
+    <a href="{{ url_for('export_csv') }}" style="margin-bottom:16px; margin-left:auto;">
+      <button type="button">⬇ Export CSV</button>
+    </a>
+  </form>
+
+  {% if feedback %}
+    <table>
+      <tr>
+        <th>Customer</th>
+        <th>Product</th>
+        <th>Rating</th>
+        <th>Feedback</th>
+        <th>Sentiment</th>
+        <th>Emotion</th>
+        <th>Confidence</th>
+        <th>Helpful</th>
+        <th>Date</th>
+      </tr>
+      {% for item in feedback %}
+      <tr>
+        <td>{{ item.username }}</td>
+        <td>{{ item.product_name }}</td>
+        <td class="stars">{{ '★' * item.rating }}{{ '☆' * (5 - item.rating) }}</td>
+        <td>
+          {{ item.review_text }}
+          {% if item.spam_score and item.spam_score >= 50 %}
+            <br><span class="badge Negative" style="margin-top:4px; display:inline-block;">⚠ Flagged ({{ item.spam_score }}%)</span>
+          {% endif %}
+        </td>
+        <td><span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span></td>
+        <td>{{ item.emotion or '—' }}</td>
+        <td>{{ item.confidence }}%</td>
+        <td>
+          <form method="POST" action="{{ url_for('cast_vote', feedback_id=item.id, vote='helpful') }}" style="display:inline;">
+            <button type="submit" style="padding:2px 8px; font-size:0.8rem;">👍 {{ item.helpful_votes or 0 }}</button>
+          </form>
+          <form method="POST" action="{{ url_for('cast_vote', feedback_id=item.id, vote='not_helpful') }}" style="display:inline;">
+            <button type="submit" style="padding:2px 8px; font-size:0.8rem;">👎 {{ item.not_helpful_votes or 0 }}</button>
+          </form>
+        </td>
+        <td>{{ item.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No feedback matches these filters.</p>
+  {% endif %}
+</div>
+{% endblock %}
