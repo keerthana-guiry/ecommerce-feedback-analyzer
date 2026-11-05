@@ -12,7 +12,7 @@ from nlp.sentiment import extract_keywords
 SENTIMENTS = ("Positive", "Neutral", "Mixed", "Negative")
 
 REVIEW_COLUMNS = """
-    reviews.id, reviews.product_id, reviews.customer_name, reviews.rating,
+    reviews.id, reviews.product_id, reviews.submitted_by, reviews.customer_name, reviews.rating,
     reviews.review_text, reviews.source, reviews.review_date,
     products.name AS product_name,
     sentiment_results.sentiment, sentiment_results.score,
@@ -44,7 +44,47 @@ def get_user_by_username(username):
         return cursor.fetchone()
 
 
+def get_user_by_id(user_id):
+    with get_cursor() as cursor:
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        return cursor.fetchone()
+
+
+def get_all_users():
+    """Every account, without the password hashes."""
+    with get_cursor() as cursor:
+        cursor.execute("SELECT id, username, role, created_at FROM users ORDER BY username")
+        return cursor.fetchall()
+
+
+def update_username(user_id, username):
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("UPDATE users SET username = %s WHERE id = %s", (username, user_id))
+
+
+def update_password(user_id, password_hash):
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user_id))
+
+
+def update_default_days(user_id, days):
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("UPDATE users SET default_days = %s WHERE id = %s", (days, user_id))
+
+
+def delete_user(user_id):
+    """Remove an account. Reviews it submitted are kept, with no submitter."""
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+
+
 # ---------- Products ----------
+
+def add_product(name):
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("INSERT INTO products (name) VALUES (%s)", (name,))
+        return cursor.lastrowid
+
 
 def get_all_products():
     with get_cursor() as cursor:
@@ -133,32 +173,68 @@ def get_trending_products(limit=5):
 
 # ---------- Reviews ----------
 
+def _insert_analysis(cursor, review_id, analysis):
+    cursor.execute("""
+        INSERT INTO sentiment_results (review_id, sentiment, score, confidence,
+                                       emotion, spam_score, model_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (review_id, analysis["sentiment"], analysis["score"], analysis["confidence"],
+          analysis["emotion"], analysis["spam_score"], analysis["model_name"]))
+
+    if analysis["aspects"]:
+        cursor.executemany(
+            "INSERT INTO aspect_results (review_id, aspect, sentiment) VALUES (%s, %s, %s)",
+            [(review_id, aspect, sentiment) for aspect, sentiment in analysis["aspects"].items()]
+        )
+
+
+def _insert_review(cursor, product_id, rating, review_text, analysis, submitted_by,
+                   customer_name, source, review_date):
+    cursor.execute("""
+        INSERT INTO reviews (product_id, submitted_by, customer_name, rating,
+                             review_text, source, review_date)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (product_id, submitted_by, customer_name, rating, review_text, source,
+          review_date or datetime.now()))
+    review_id = cursor.lastrowid
+    _insert_analysis(cursor, review_id, analysis)
+    return review_id
+
+
 def add_review(product_id, rating, review_text, analysis, submitted_by=None,
                customer_name=None, source="manual", review_date=None):
     """Save a review and its analysis results together. If any part fails,
     nothing is saved, so a review can never be left without its analysis."""
     with get_cursor(commit=True) as cursor:
-        cursor.execute("""
-            INSERT INTO reviews (product_id, submitted_by, customer_name, rating,
-                                 review_text, source, review_date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (product_id, submitted_by, customer_name, rating, review_text, source,
-              review_date or datetime.now()))
-        review_id = cursor.lastrowid
+        return _insert_review(cursor, product_id, rating, review_text, analysis, submitted_by,
+                              customer_name, source, review_date)
 
-        cursor.execute("""
-            INSERT INTO sentiment_results (review_id, sentiment, score, confidence,
-                                           emotion, spam_score, model_name)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (review_id, analysis["sentiment"], analysis["score"], analysis["confidence"],
-              analysis["emotion"], analysis["spam_score"], analysis["model_name"]))
 
-        if analysis["aspects"]:
-            cursor.executemany(
-                "INSERT INTO aspect_results (review_id, aspect, sentiment) VALUES (%s, %s, %s)",
-                [(review_id, aspect, sentiment) for aspect, sentiment in analysis["aspects"].items()]
-            )
-    return review_id
+def add_uploaded_reviews(rows, submitted_by):
+    """Save all the rows of an uploaded file together, or none of them."""
+    with get_cursor(commit=True) as cursor:
+        for row in rows:
+            _insert_review(cursor, row["product_id"], row["rating"], row["review_text"],
+                           row["analysis"], submitted_by, row["customer_name"], "csv",
+                           row["review_date"])
+
+
+def update_review(review_id, product_id, rating, review_text, customer_name, analysis):
+    """Save edits to a review and replace its old analysis with a new one."""
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("""
+            UPDATE reviews SET product_id = %s, rating = %s, review_text = %s, customer_name = %s
+            WHERE id = %s
+        """, (product_id, rating, review_text, customer_name, review_id))
+        cursor.execute("DELETE FROM sentiment_results WHERE review_id = %s", (review_id,))
+        cursor.execute("DELETE FROM aspect_results WHERE review_id = %s", (review_id,))
+        _insert_analysis(cursor, review_id, analysis)
+
+
+def delete_review(review_id):
+    """Remove a review. Its analysis results are removed with it."""
+    with get_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM reviews WHERE id = %s", (review_id,))
 
 
 def get_review(review_id):

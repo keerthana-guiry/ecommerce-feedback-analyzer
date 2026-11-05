@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_ui.html" import pending %}
+{% from "_ui.html" import icon %}
 {% block title %}Settings{% endblock %}
 {% block page_title %}Settings{% endblock %}
 {% block page_sub %}Your profile and account{% endblock %}
@@ -8,14 +8,117 @@
 <section class="card card-narrow">
   <div class="card-head"><h2>User Profile</h2></div>
   <dl class="detail-list">
-    <div><dt>Username</dt><dd style="text-transform: none;">{{ session.get('username') }}</dd></div>
-    <div><dt>Role</dt><dd>{{ session.get('role') }}</dd></div>
+    <div><dt>Role</dt><dd>{{ g.user.role }}</dd></div>
+    <div><dt>Member since</dt><dd>{{ g.user.created_at.strftime('%b %d, %Y') }}</dd></div>
   </dl>
-  {{ pending(3, "Editing your profile and changing your password arrive with user authentication.") }}
+  <form method="POST" action="{{ url_for('settings.update_profile') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="{{ g.user.username }}" maxlength="50" autocomplete="username" required>
+    </div>
+    <button type="submit">Save Username</button>
+  </form>
+</section>
+
+<section class="card card-narrow">
+  <div class="card-head"><h2>Change Password</h2></div>
+  <form method="POST" action="{{ url_for('settings.change_password') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" name="current_password" autocomplete="current-password" required>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password" minlength="8" maxlength="128" autocomplete="new-password" required>
+      </div>
+      <div class="field">
+        <label for="confirm_password">Confirm New Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" minlength="8" maxlength="128" autocomplete="new-password" required>
+      </div>
+    </div>
+    <button type="submit">Change Password</button>
+  </form>
 </section>
 
 <section class="card card-narrow">
   <div class="card-head"><h2>Application Preferences</h2></div>
-  {{ pending(3, "Preferences such as the default time period will be saved to your account.") }}
+  <form method="POST" action="{{ url_for('settings.update_preferences') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="default_days">Default Dashboard Time Period</label>
+      <select id="default_days" name="default_days">
+        {% for days in period_options %}
+          <option value="{{ days }}" {% if days == g.user.default_days %}selected{% endif %}>Last {{ days }} days</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit">Save Preferences</button>
+  </form>
 </section>
+
+{% if users is not none %}
+<section class="card card-flush">
+  <div class="card-head">
+    <div>
+      <h2>User Accounts</h2>
+      <p class="card-sub">Only admins can see this section</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for account in users %}
+        <tr>
+          <td>{{ account.username }}{% if account.id == g.user.id %} (you){% endif %}</td>
+          <td class="nowrap" style="text-transform: capitalize;">{{ account.role }}</td>
+          <td class="nowrap">{{ account.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>
+            {% if account.id != g.user.id %}
+            <div class="actions">
+              <a class="btn btn-quiet" href="{{ url_for('settings.reset_password', user_id=account.id) }}">Reset Password</a>
+              <form class="inline-form" method="POST" action="{{ url_for('settings.delete_user', user_id=account.id) }}" onsubmit="return confirm('Delete this account? Reviews it submitted will be kept.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-quiet btn-danger icon-btn" aria-label="Delete {{ account.username }}" title="Delete account">{{ icon('trash') }}</button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card card-narrow">
+  <div class="card-head"><h2>Add an Account</h2></div>
+  <form method="POST" action="{{ url_for('settings.create_user') }}" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field-row">
+      <div class="field">
+        <label for="new_username">Username</label>
+        <input type="text" id="new_username" name="username" maxlength="50" autocomplete="off" required>
+      </div>
+      <div class="field">
+        <label for="role">Role</label>
+        <select id="role" name="role">
+          <option value="analyst">Analyst</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="account_password">Starting Password</label>
+      <input type="password" id="account_password" name="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+    </div>
+    <button type="submit">Create Account</button>
+  </form>
+</section>
+{% endif %}
 {% endblock %}

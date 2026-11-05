@@ -71,6 +71,7 @@
             <th>Sentiment</th>
             <th class="num">Confidence</th>
             <th>Date</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +89,17 @@
             <td><span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span></td>
             <td class="num">{{ '%.1f'|format(item.confidence) }}%</td>
             <td class="nowrap" title="{{ item.review_date }}">{{ item.review_date.strftime('%Y-%m-%d') }}</td>
+            <td>
+              {% if can_manage(item) %}
+              <div class="actions">
+                <a class="btn btn-quiet icon-btn" href="{{ url_for('reviews.edit', review_id=item.id) }}" aria-label="Edit review" title="Edit review">{{ icon('pencil') }}</a>
+                <form class="inline-form" method="POST" action="{{ url_for('reviews.delete', review_id=item.id, page=page, **filters) }}" onsubmit="return confirm('Delete this review and its analysis? This cannot be undone.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-quiet btn-danger icon-btn" aria-label="Delete review" title="Delete review">{{ icon('trash') }}</button>
+                </form>
+              </div>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

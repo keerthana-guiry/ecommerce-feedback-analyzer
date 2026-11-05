@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Edit Review{% endblock %}
+{% block page_title %}Edit Review{% endblock %}
+{% block page_sub %}Saving analyzes the review again and replaces its old results{% endblock %}
+
+{% block content %}
+<section class="card card-narrow">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field-row">
+      <div class="field">
+        <label for="product_id">Product</label>
+        <select id="product_id" name="product_id" required>
+          {% for product in products %}
+            <option value="{{ product.id }}" {% if product.id == values.product_id %}selected{% endif %}>{{ product.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="rating">Rating</label>
+        <select id="rating" name="rating" required>
+          {% for number, label in [(5, 'Excellent'), (4, 'Good'), (3, 'Average'), (2, 'Poor'), (1, 'Terrible')] %}
+            <option value="{{ number }}" {% if number == values.rating %}selected{% endif %}>{{ number }} - {{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="customer_name">Customer Name (optional)</label>
+      <input type="text" id="customer_name" name="customer_name" value="{{ values.customer_name or '' }}" maxlength="100">
+    </div>
+    <div class="field">
+      <label for="review_text">Review</label>
+      <textarea id="review_text" name="review_text" maxlength="5000" required>{{ values.review_text }}</textarea>
+    </div>
+    <div class="actions">
+      <button type="submit">Save and Analyze</button>
+      <a class="btn btn-quiet" href="{{ url_for('reviews.index') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

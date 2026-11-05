@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Database Unavailable | Ecommerce Feedback Analyzer</title>
+  <title>{{ heading }} | Ecommerce Feedback Analyzer</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <div class="auth-page">
     <div class="auth-box">
-      <h1>Can't reach the database</h1>
-      <p class="page-sub">Please check that MySQL is running, then try again. If this is the first run, run <code>setup_database.py</code>.</p>
-      <a class="btn" href="{{ url_for('auth.login') }}">Try Again</a>
+      <h1>{{ heading }}</h1>
+      <p class="page-sub">{{ message }}</p>
+      <a class="btn" href="{{ url_for('auth.index') }}">Back to the App</a>
     </div>
   </div>
 </body>

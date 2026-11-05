@@ -37,7 +37,7 @@
         </div>
         <div class="field">
           <label for="review_text">Review</label>
-          <textarea id="review_text" name="review_text" placeholder="Paste or type the customer's review..." required></textarea>
+          <textarea id="review_text" name="review_text" maxlength="5000" placeholder="Paste or type the customer's review..." required></textarea>
         </div>
         <button type="submit">Analyze Review</button>
       </form>
@@ -45,7 +45,33 @@
 
     <div class="card">
       <div class="card-head"><h2>Upload a CSV File</h2></div>
-      {{ pending(3, "Bulk upload with validation of each row arrives with review management.") }}
+      <p class="upload-help">
+        Needs the columns <code>product</code>, <code>rating</code> and <code>review</code>.
+        <code>customer</code> and <code>date</code> (like 2026-01-31) are optional.
+        If any row has a problem, nothing is added, so you can fix the file and upload it again.
+        Up to 5,000 reviews or 5 MB.
+      </p>
+      {% if upload_errors %}
+        <div class="upload-errors" role="alert">
+          <strong>Nothing was added.</strong>
+          <ul>
+            {% for error in upload_errors[:20] %}
+              <li>{{ error }}</li>
+            {% endfor %}
+            {% if upload_errors|length > 20 %}
+              <li>And {{ upload_errors|length - 20 }} more.</li>
+            {% endif %}
+          </ul>
+        </div>
+      {% endif %}
+      <form method="POST" action="{{ url_for('reviews.upload') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="file">CSV File</label>
+          <input type="file" id="file" name="file" accept=".csv" required>
+        </div>
+        <button type="submit">Upload Reviews</button>
+      </form>
     </div>
   </div>
 

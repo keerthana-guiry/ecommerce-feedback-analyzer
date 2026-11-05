@@ -19,6 +19,20 @@
   {{ product_table(product_analytics) }}
 </section>
 
+{% if g.user.role == 'admin' %}
+<section class="card card-narrow">
+  <div class="card-head"><h2>Add a Product</h2></div>
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="name">Product Name</label>
+      <input type="text" id="name" name="name" maxlength="150" required>
+    </div>
+    <button type="submit">Add Product</button>
+  </form>
+</section>
+{% endif %}
+
 <section class="grid-wide">
   <div class="card">
     <div class="card-head"><h2>Sentiment by Product</h2></div>

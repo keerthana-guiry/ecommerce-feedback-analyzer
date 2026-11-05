@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin', 'analyst') NOT NULL DEFAULT 'analyst',
+    default_days SMALLINT UNSIGNED NOT NULL DEFAULT 30,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_username (username)

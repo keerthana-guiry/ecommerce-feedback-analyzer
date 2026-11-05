@@ -13,7 +13,7 @@ phase it arrives in.
 | --- | --- | --- |
 | 1 | Dashboard UI | Done |
 | 2 | Backend and MySQL database | Done |
-| 3 | User roles, CSV upload, review management | Not started |
+| 3 | User roles, CSV upload, review management | Done |
 | 4 | Sentiment analysis with VADER | Not started |
 | 5 | Aspect-based sentiment analysis | Not started |
 | 6 | Complaint detection and product insights | Not started |
@@ -24,9 +24,30 @@ phase it arrives in.
 
 - Dashboard with key metrics, sentiment distribution, review trend, top complaint keywords, top products, and recent reviews
 - Review Analysis to submit a review and see its sentiment, confidence, and aspects
-- All Reviews with search, product, sentiment, and rating filters, date sorting, and CSV export
+- CSV upload that checks every row and adds nothing if any row has a problem
+- All Reviews with search, filters, date sorting, editing, deleting, and CSV export
 - Product Insights comparing sentiment, ratings, and health status across products
 - Reports & Trends with daily, weekly, and monthly sentiment and satisfaction charts
+- Settings for your username, password, and default dashboard time period
+
+**Roles**
+
+| | Analyst | Admin |
+| --- | --- | --- |
+| View all pages and export reviews | Yes | Yes |
+| Add reviews and upload CSV files | Yes | Yes |
+| Edit and delete reviews | Only ones they submitted | Any review |
+| Add products | No | Yes |
+| Create and delete accounts, reset passwords | No | Yes |
+
+**CSV Upload Format**
+
+The columns `product`, `rating`, and `review` are required. `customer` and `date` (like `2026-01-31`)
+are optional. Products must already exist in the app. Files can have up to 5,000 reviews or 5 MB.
+```
+product,rating,review,customer,date
+Laptop Backpack,5,Strong zips and very comfortable,Asha,2026-01-31
+```
 
 **Sentiment Engine**
 - Custom rule-based analyzer for now. VADER replaces it in Phase 4. It considers:
@@ -40,6 +61,8 @@ phase it arrives in.
 
 **Security**
 - Hashed passwords and CSRF protection on every form
+- Permissions are checked on the server for every action
+- Changing a password or deleting an account logs it out everywhere
 - Parameterized SQL for every query
 - The app connects to MySQL with a limited account, not root
 - Passwords and keys live in a private `.env` file that Git ignores
@@ -76,7 +99,7 @@ later without changing them.
 │   │   ├── models.py       # All SQL queries
 │   │   └── schema.sql      # Table definitions
 │   ├── nlp/                # Text analysis
-│   ├── utils/              # Login check and safe CSV export
+│   ├── utils/              # Permissions, input checks, CSV import and export
 │   ├── static/             # CSS and Chart.js scripts
 │   ├── templates/          # Page templates
 │   ├── uploads/            # Uploaded CSV datasets (not tracked by Git)
@@ -99,6 +122,8 @@ You need Python and a running MySQL server.
 Step 3 asks for your MySQL root password, which it doesn't save. It creates the databases,
 a limited MySQL account for the app, the `.env` file, and an `admin` login. The admin password
 prints once, so save it. To choose your own, set `ADMIN_PASSWORD` before running step 3.
+
+After pulling a newer version of the app, run step 3 again. It keeps your data and adds anything new.
 
 ### Demo Data
 To fill the dashboard with sample reviews, run this once after step 3:

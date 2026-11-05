@@ -55,7 +55,8 @@ def get_cursor(commit=False):
 
 
 def apply_schema(connection):
-    """Create any missing tables from schema.sql on an open connection."""
+    """Create any missing tables from schema.sql on an open connection, and
+    add columns that are newer than a database's existing tables."""
     with open(SCHEMA_FILE, encoding="utf-8") as schema_file:
         lines = [line for line in schema_file if not line.lstrip().startswith("--")]
 
@@ -63,5 +64,12 @@ def apply_schema(connection):
     for statement in "".join(lines).split(";"):
         if statement.strip():
             cursor.execute(statement)
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'default_days'
+    """)
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("ALTER TABLE users ADD COLUMN default_days SMALLINT UNSIGNED NOT NULL DEFAULT 30 AFTER role")
     connection.commit()
     cursor.close()

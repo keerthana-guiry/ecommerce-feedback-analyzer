@@ -25,10 +25,10 @@
     </nav>
 
     <div class="side-user">
-      <span class="avatar">{{ initials(session.get('username')) }}</span>
+      <span class="avatar">{{ initials(g.user.username) }}</span>
       <div class="side-user-text">
-        <div class="side-user-name">{{ session.get('username', '') }}</div>
-        <div class="side-user-role">{{ session.get('role', '') }}</div>
+        <div class="side-user-name">{{ g.user.username }}</div>
+        <div class="side-user-role">{{ g.user.role }}</div>
       </div>
       <a href="{{ url_for('auth.logout') }}" title="Log out" aria-label="Log out">{{ icon('logout') }}</a>
     </div>

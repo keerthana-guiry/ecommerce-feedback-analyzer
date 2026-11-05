@@ -1,6 +1,6 @@
 """The main Dashboard page."""
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, g, render_template, request
 
 from db import models
 from utils.auth import login_required
@@ -13,9 +13,9 @@ PERIOD_OPTIONS = (7, 30, 90)
 @dashboard_bp.route("/dashboard")
 @login_required
 def index():
-    days = request.args.get("days", 30, type=int)
+    days = request.args.get("days", g.user["default_days"], type=int)
     if days not in PERIOD_OPTIONS:
-        days = 30
+        days = g.user["default_days"]
     return render_template(
         "dashboard.html",
         dashboard=models.get_dashboard_data(days),

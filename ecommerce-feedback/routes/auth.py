@@ -4,6 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import check_password_hash
 
 from db import models
+from utils.auth import log_in
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -23,10 +24,7 @@ def login():
 
         user = models.get_user_by_username(username)
         if user and check_password_hash(user["password_hash"], password):
-            session.clear()
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            session["role"] = user["role"]
+            log_in(user)
             return redirect(url_for("dashboard.index"))
 
         flash("Invalid username or password.")

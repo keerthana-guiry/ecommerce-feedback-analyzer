@@ -422,17 +422,12 @@ button:hover, .btn:hover { background: #0ea572; border-color: #0ea572; color: va
 .btn-quiet .icon { width: 15px; height: 15px; }
 .btn-danger:hover { background: var(--negative-soft); color: var(--negative); border-color: var(--negative-soft); }
 
-.vote {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border);
-  padding: 3px 8px;
-  font-size: 12px;
-  font-weight: 400;
-}
+.icon-btn { padding: 6px; }
 
-.vote:hover { background: var(--mint); color: var(--text); border-color: var(--mint); }
-.vote .icon { width: 13px; height: 13px; }
+.upload-help { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.upload-help code { color: var(--text); }
+.upload-errors { background: var(--negative-soft); color: #b91c1c; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; }
+.upload-errors ul { margin: 6px 0 0; padding-left: 18px; }
 
 .inline-form { display: inline; }
 .actions { display: flex; align-items: center; gap: 6px; }

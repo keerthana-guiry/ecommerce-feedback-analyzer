@@ -44,10 +44,14 @@ def clean_tables():
     models.create_user("admin", ADMIN_HASH, role="admin")
 
 
+@pytest.fixture(autouse=True)
+def app_settings(tmp_path):
+    flask_app.app.config.update(TESTING=False, WTF_CSRF_ENABLED=False, UPLOAD_FOLDER=str(tmp_path))
+
+
 @pytest.fixture
 def client():
     """A test client that isn't logged in, with CSRF checks off."""
-    flask_app.app.config.update(TESTING=False, WTF_CSRF_ENABLED=False)
     return flask_app.app.test_client()
 
 
@@ -56,6 +60,15 @@ def admin(client):
     """A test client logged in as the admin."""
     client.post("/login", data={"username": "admin", "password": ADMIN_PASSWORD})
     return client
+
+
+@pytest.fixture
+def analyst():
+    """A separate test client logged in as an analyst."""
+    models.create_user("priya", ADMIN_HASH, role="analyst")
+    analyst_client = flask_app.app.test_client()
+    analyst_client.post("/login", data={"username": "priya", "password": ADMIN_PASSWORD})
+    return analyst_client
 
 
 def add_review(days_ago=1, rating=5, text="great product", product_id=1, customer_name="Asha"):
