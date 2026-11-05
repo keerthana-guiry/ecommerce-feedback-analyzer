@@ -1,79 +1,72 @@
 {% extends "base.html" %}
-{% block title %}Product Performance{% endblock %}
+{% from "_ui.html" import product_table, pending %}
+{% block title %}Product Insights{% endblock %}
+{% block page_title %}Product Insights{% endblock %}
+{% block page_sub %}Compare how customers feel about each product{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h2>Product Performance Score</h2>
-  <p style="font-size:0.85rem; color:#567C8D;">Score out of 100, combining average rating, positive sentiment ratio, and review volume.</p>
-  {% if product_analytics %}
-    <table>
-      <tr>
-        <th>Product</th>
-        <th>Score</th>
-        <th>Total Reviews</th>
-        <th>Avg Rating</th>
-        <th>Positive</th>
-        <th>Negative</th>
-        <th>Neutral</th>
-        <th>Mixed</th>
-      </tr>
-      {% for p in product_analytics %}
-      <tr>
-        <td>{{ p.name }}</td>
-        <td>
-          {% if p.performance_score is not none %}
-            <span class="badge {{ 'Positive' if p.performance_score >= 70 else ('Neutral' if p.performance_score >= 40 else 'Negative') }}">{{ p.performance_score }}/100</span>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>{{ p.total }}</td>
-        <td>{{ '%.1f'|format(p.avg_rating) if p.avg_rating else '—' }}</td>
-        <td style="color:#2f6b45;">{{ p.positive }}</td>
-        <td style="color:#a3453f;">{{ p.negative }}</td>
-        <td>{{ p.neutral }}</td>
-        <td>{{ p.mixed }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  {% else %}
-    <p>No product data yet.</p>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h2>Trending Products</h2>
-  <div style="display:flex; gap:20px; flex-wrap:wrap;">
-    <div style="flex:1; min-width:220px;">
-      <h3 style="font-size:1rem; color:var(--teal);">🔥 Most Reviewed</h3>
-      <ol>
-        {% for p in trending.most_reviewed %}
-          <li>{{ p.name }} ({{ p.total }} reviews)</li>
-        {% else %}
-          <li>No data yet</li>
-        {% endfor %}
-      </ol>
-    </div>
-    <div style="flex:1; min-width:220px;">
-      <h3 style="font-size:1rem; color:#2f6b45;">⭐ Highest Rated</h3>
-      <ol>
-        {% for p in trending.highest_rated %}
-          <li>{{ p.name }} ({{ '%.1f'|format(p.avg_rating) }}★)</li>
-        {% else %}
-          <li>No data yet</li>
-        {% endfor %}
-      </ol>
-    </div>
-    <div style="flex:1; min-width:220px;">
-      <h3 style="font-size:1rem; color:#a3453f;">⚠️ Needs Attention</h3>
-      <ol>
-        {% for p in trending.lowest_rated %}
-          <li>{{ p.name }} ({{ '%.1f'|format(p.avg_rating) }}★)</li>
-        {% else %}
-          <li>No data yet</li>
-        {% endfor %}
-      </ol>
+<section class="card card-flush">
+  <div class="card-head">
+    <div>
+      <h2>Product Performance</h2>
+      <p class="card-sub">Scores out of 100, combining average rating, positive sentiment and review volume</p>
     </div>
   </div>
-</div>
+  {{ product_table(product_analytics) }}
+</section>
+
+<section class="grid-wide">
+  <div class="card">
+    <div class="card-head"><h2>Sentiment by Product</h2></div>
+    <div class="chart-box"><canvas id="productComparisonChart" role="img" aria-label="Stacked bars comparing the sentiment share of each product"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Frequently Reported Problems</h2></div>
+    {{ pending(6, "Each product's recurring complaints, with counts, will appear here once complaint detection is built.") }}
+  </div>
+</section>
+
+<section class="rank-grid">
+  <div class="card">
+    <div class="card-head"><h2>Most Reviewed</h2></div>
+    <ol class="rank-list">
+      {% for p in trending.most_reviewed %}
+        <li><span>{{ p.name }}</span><span class="value">{{ p.total }} review{{ '' if p.total == 1 else 's' }}</span></li>
+      {% else %}
+        <li>No data yet</li>
+      {% endfor %}
+    </ol>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Highest Rated</h2></div>
+    <ol class="rank-list">
+      {% for p in trending.highest_rated %}
+        <li><span>{{ p.name }}</span><span class="value">{{ '%.1f'|format(p.avg_rating) }} ★</span></li>
+      {% else %}
+        <li>No data yet</li>
+      {% endfor %}
+    </ol>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Needs Attention</h2></div>
+    <ol class="rank-list">
+      {% for p in trending.lowest_rated %}
+        <li><span>{{ p.name }}</span><span class="value">{{ '%.1f'|format(p.avg_rating) }} ★</span></li>
+      {% else %}
+        <li>No data yet</li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="chart-data" type="application/json">{{ product_analytics|tojson }}</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/products.js') }}"></script>
 {% endblock %}

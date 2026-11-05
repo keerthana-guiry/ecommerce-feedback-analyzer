@@ -1,37 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Your Feedback History{% endblock %}
+{% from "_ui.html" import icon, stars %}
+{% block title %}Feedback History{% endblock %}
+{% block page_title %}Feedback History{% endblock %}
+{% block page_sub %}Every review you've submitted{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h2>Your Feedback History</h2>
+<section class="card card-flush">
   {% if history %}
-    <table>
-      <tr>
-        <th>Product</th>
-        <th>Rating</th>
-        <th>Feedback</th>
-        <th>Sentiment</th>
-        <th>Date</th>
-        <th>Actions</th>
-      </tr>
-      {% for item in history %}
-      <tr>
-        <td>{{ item.product_name }}</td>
-        <td class="stars">{{ '★' * item.rating }}{{ '☆' * (5 - item.rating) }}</td>
-        <td>{{ item.review_text }}</td>
-        <td><span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span></td>
-        <td>{{ item.created_at }}</td>
-        <td>
-          <a href="{{ url_for('edit_feedback', feedback_id=item.id) }}">Edit</a>
-          <form method="POST" action="{{ url_for('delete_feedback', feedback_id=item.id) }}" style="display:inline;" onsubmit="return confirm('Delete this feedback?');">
-            <button type="submit" style="padding: 2px 10px; font-size: 0.8rem; margin-left: 8px;">Delete</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Rating</th>
+            <th>Feedback</th>
+            <th>Sentiment</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in history %}
+          <tr>
+            <td><div class="row-name"><span class="row-icon">{{ icon('box') }}</span>{{ item.product_name }}</div></td>
+            <td>{{ stars(item.rating) }}</td>
+            <td class="review">{{ item.review_text }}</td>
+            <td><span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span></td>
+            <td class="nowrap" title="{{ item.created_at }}">{{ item.created_at[:10] }}</td>
+            <td>
+              <div class="actions">
+                <a class="btn btn-quiet" href="{{ url_for('edit_feedback', feedback_id=item.id) }}">{{ icon('pencil') }} Edit</a>
+                <form method="POST" action="{{ url_for('delete_feedback', feedback_id=item.id) }}" class="inline-form" onsubmit="return confirm('Delete this feedback?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-quiet btn-danger">{{ icon('trash') }} Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
-    <p>You haven't submitted any feedback yet. <a href="{{ url_for('leave_feedback') }}">Leave your first review →</a></p>
+    <p class="empty">You haven't submitted any feedback yet. <a href="{{ url_for('leave_feedback') }}">Leave your first review</a></p>
   {% endif %}
-</div>
+</section>
 {% endblock %}

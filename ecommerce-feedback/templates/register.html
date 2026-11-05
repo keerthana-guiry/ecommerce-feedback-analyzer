@@ -1,29 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Register | Feedback Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-  <div class="auth-box">
-    <h1>Create Account</h1>
+{% extends "auth_base.html" %}
+{% block title %}Create Account{% endblock %}
 
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for message in messages %}
-          <div class="flash">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+{% block content %}
+<h1>Create your account</h1>
+<p class="page-sub">Start sharing feedback on products</p>
 
-    <form method="POST">
-      <input type="text" name="username" placeholder="Choose a username" required>
-      <input type="password" name="password" placeholder="Choose a password" required>
-      <button type="submit">Register</button>
-    </form>
-
-    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autocomplete="username" required>
   </div>
-</body>
-</html>
+  <div class="field">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="new-password" required>
+  </div>
+  <button type="submit">Register</button>
+</form>
+
+<p class="auth-foot">Already have an account? <a href="{{ url_for('login') }}">Log in here</a></p>
+{% endblock %}

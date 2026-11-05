@@ -1,54 +1,135 @@
 {% extends "base.html" %}
-{% block title %}Sentiment Breakdown{% endblock %}
+{% from "_ui.html" import icon, product_table, pending, stars %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Customer sentiment, ratings and complaints at a glance{% endblock %}
+
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block page_actions %}
+<form method="GET">
+  <select name="days" class="compact-select" aria-label="Time period" onchange="this.form.submit()">
+    {% for option in period_options %}
+      <option value="{{ option }}" {% if option == dashboard.days %}selected{% endif %}>Last {{ option }} days</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit" class="btn-quiet">Apply</button></noscript>
+</form>
+<span class="date-range">{{ icon('calendar') }} {{ dashboard.start.strftime('%b %d') }} – {{ dashboard.end.strftime('%b %d, %Y') }}</span>
 {% endblock %}
 
 {% block content %}
-<div class="stats-row">
-  <div class="stat-box">
-    <div class="num">{{ sentiment_counts.get('Positive', 0) }}</div>
-    <div>Positive</div>
+<section class="kpi-grid" aria-label="Key metrics">
+  {% for kpi in dashboard.kpis %}
+  <div class="kpi">
+    <div class="kpi-label">{{ kpi.label }}</div>
+    <div class="kpi-value">{{ kpi.value }}</div>
+    <div class="kpi-spark"><canvas data-spark="{{ loop.index0 }}" aria-hidden="true"></canvas></div>
+    <div class="kpi-delta">
+      {% if kpi.change is none %}
+        No earlier data
+      {% elif kpi.change == 0 %}
+        No change vs previous {{ dashboard.days }} days
+      {% else %}
+        {% if kpi.higher_is_better is none %}
+          {% set tone = 'flat' %}
+        {% elif (kpi.change > 0) == kpi.higher_is_better %}
+          {% set tone = 'good' %}
+        {% else %}
+          {% set tone = 'bad' %}
+        {% endif %}
+        <span class="delta {{ tone }}">{{ icon('up' if kpi.change > 0 else 'down') }}{{ kpi.change|abs }}{{ kpi.unit }}</span>
+        vs previous {{ dashboard.days }} days
+      {% endif %}
+    </div>
   </div>
-  <div class="stat-box">
-    <div class="num">{{ sentiment_counts.get('Negative', 0) }}</div>
-    <div>Negative</div>
-  </div>
-  <div class="stat-box">
-    <div class="num">{{ sentiment_counts.get('Neutral', 0) }}</div>
-    <div>Neutral</div>
-  </div>
-  <div class="stat-box">
-    <div class="num">{{ sentiment_counts.get('Mixed', 0) }}</div>
-    <div>Mixed</div>
-  </div>
-</div>
+  {% endfor %}
+</section>
 
-<div class="card">
-  <h2>Sentiment Breakdown</h2>
-  <canvas id="sentimentChart" height="100"></canvas>
-</div>
+<section class="grid-wide">
+  <div class="card">
+    <div class="card-head"><h2>Review Trend</h2></div>
+    {% if dashboard.total %}
+      <div class="chart-box"><canvas id="reviewTrendChart" role="img" aria-label="Line chart of reviews per day"></canvas></div>
+    {% else %}
+      <p class="empty">No reviews in this period.</p>
+    {% endif %}
+  </div>
 
-<script>
-  const ctx = document.getElementById('sentimentChart');
-  new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Positive', 'Negative', 'Neutral', 'Mixed'],
-      datasets: [{
-        data: [
-          {{ sentiment_counts.get('Positive', 0) }},
-          {{ sentiment_counts.get('Negative', 0) }},
-          {{ sentiment_counts.get('Neutral', 0) }},
-          {{ sentiment_counts.get('Mixed', 0) }}
-        ],
-        backgroundColor: ['#567C8D', '#2F4156', '#C8D9E6', '#9b7fb0']
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: 'bottom' } }
-    }
-  });
-</script>
+  <div class="card">
+    <div class="card-head"><h2>Sentiment Distribution</h2></div>
+    {% if dashboard.total %}
+      <div class="chart-box"><canvas id="sentimentDistributionChart" role="img" aria-label="Doughnut chart of reviews by sentiment"></canvas></div>
+    {% else %}
+      <p class="empty">No reviews in this period.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid-even">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Top Complaint Keywords</h2>
+        <p class="card-sub">The negative words customers use most, across all reviews</p>
+      </div>
+    </div>
+    {% if keywords.top_negative %}
+      {% set highest = keywords.top_negative[0][1] %}
+      {% for word, count in keywords.top_negative %}
+        <div class="keyword-row">
+          <div class="keyword-text"><span>{{ word }}</span><span>{{ count }}</span></div>
+          <div class="keyword-bar"><i style="width: {{ (count / highest * 100)|round(1) }}%"></i></div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">No complaints found yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Business Recommendations</h2></div>
+    {{ pending(7, "Recommendations will be generated from the complaints detected in your real reviews. This section stays empty until then, rather than showing made-up advice.") }}
+  </div>
+</section>
+
+<section class="card card-flush">
+  <div class="card-head">
+    <h2>Top-Performing Products</h2>
+    <a class="btn btn-quiet" href="{{ url_for('admin_products') }}">View all products</a>
+  </div>
+  {{ product_table(products) }}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Recent Reviews</h2>
+    <a class="btn btn-quiet" href="{{ url_for('admin_feedback') }}">View all reviews</a>
+  </div>
+  {% if recent_reviews %}
+    <ul class="review-list">
+      {% for item in recent_reviews %}
+        <li>
+          <div class="review-meta">
+            <strong>{{ item.product_name }}</strong>
+            {{ stars(item.rating) }}
+            <span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span>
+            <span>{{ item.username }} · {{ item.created_at[:10] }}</span>
+          </div>
+          {{ item.review_text }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">No reviews yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="chart-data" type="application/json">{{ dashboard|tojson }}</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

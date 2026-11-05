@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_ui.html" import pending %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_sub %}Your profile and account{% endblock %}
+
+{% block content %}
+<section class="card card-narrow">
+  <div class="card-head"><h2>User Profile</h2></div>
+  <dl class="detail-list">
+    <div><dt>Username</dt><dd style="text-transform: none;">{{ session.get('username') }}</dd></div>
+    <div><dt>Role</dt><dd>{{ session.get('role') }}</dd></div>
+  </dl>
+  {{ pending(3, "Editing your profile and changing your password arrive with user authentication.") }}
+</section>
+
+<section class="card card-narrow">
+  <div class="card-head"><h2>Application Preferences</h2></div>
+  {{ pending(3, "Preferences such as the default time period will be saved to your account.") }}
+</section>
+{% endblock %}

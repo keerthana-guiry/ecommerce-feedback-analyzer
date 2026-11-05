@@ -1,41 +1,61 @@
+{% from "_ui.html" import icon, initials %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{% block title %}Feedback Analyzer{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} | Ecommerce Feedback Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block head %}{% endblock %}
 </head>
 <body>
-  <nav>
-    <span class="brand">🛒 Feedback Analyzer</span>
-    <div class="nav-links">
-      {% if session.get('role') == 'admin' %}
-        <a href="{{ url_for('admin_sentiment') }}" class="{{ 'active' if request.endpoint == 'admin_sentiment' }}">Sentiment Breakdown</a>
-        <a href="{{ url_for('admin_products') }}" class="{{ 'active' if request.endpoint == 'admin_products' }}">Product Performance</a>
-        <a href="{{ url_for('admin_feedback') }}" class="{{ 'active' if request.endpoint == 'admin_feedback' }}">All Customer Feedback</a>
-        <a href="{{ url_for('admin_insights') }}" class="{{ 'active' if request.endpoint == 'admin_insights' }}">Insights</a>
-      {% elif session.get('role') == 'customer' %}
-        <a href="{{ url_for('leave_feedback') }}" class="{{ 'active' if request.endpoint == 'leave_feedback' }}">Leave Feedback</a>
-        <a href="{{ url_for('feedback_history') }}" class="{{ 'active' if request.endpoint == 'feedback_history' }}">History</a>
-      {% endif %}
-    </div>
-    <div>
-      <span>Hi, {{ session.get('username', '') }}</span>
-      <a href="{{ url_for('logout') }}">Logout</a>
-    </div>
-  </nav>
+  <aside class="sidebar">
+    <div class="brand">{{ icon('logo') }}<span><small>Ecommerce</small>Feedback Analyzer</span></div>
 
-  <div class="container">
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for message in messages %}
-          <div class="flash">{{ message }}</div>
-        {% endfor %}
+    <nav class="side-nav" aria-label="Main">
+      {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('admin_sentiment') }}" class="{{ 'active' if request.endpoint == 'admin_sentiment' }}">{{ icon('dashboard') }} Dashboard</a>
+        <a href="{{ url_for('admin_analyze') }}" class="{{ 'active' if request.endpoint == 'admin_analyze' }}">{{ icon('analyze') }} Review Analysis</a>
+        <a href="{{ url_for('admin_feedback') }}" class="{{ 'active' if request.endpoint == 'admin_feedback' }}">{{ icon('message') }} All Reviews</a>
+        <a href="{{ url_for('admin_products') }}" class="{{ 'active' if request.endpoint == 'admin_products' }}">{{ icon('box') }} Product Insights</a>
+        <a href="{{ url_for('admin_reports') }}" class="{{ 'active' if request.endpoint == 'admin_reports' }}">{{ icon('chart') }} Reports &amp; Trends</a>
+      {% else %}
+        <a href="{{ url_for('leave_feedback') }}" class="{{ 'active' if request.endpoint == 'leave_feedback' }}">{{ icon('pencil') }} Leave Feedback</a>
+        <a href="{{ url_for('feedback_history') }}" class="{{ 'active' if request.endpoint in ('feedback_history', 'edit_feedback') }}">{{ icon('clock') }} History</a>
       {% endif %}
+      <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' }}">{{ icon('settings') }} Settings</a>
+    </nav>
+
+    <div class="side-user">
+      <span class="avatar">{{ initials(session.get('username')) }}</span>
+      <div class="side-user-text">
+        <div class="side-user-name">{{ session.get('username', '') }}</div>
+        <div class="side-user-role">{{ session.get('role', '') }}</div>
+      </div>
+      <a href="{{ url_for('logout') }}" title="Log out" aria-label="Log out">{{ icon('logout') }}</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="page-head">
+      <div>
+        <h1>{% block page_title %}{% endblock %}</h1>
+        <p class="page-sub">{% block page_sub %}{% endblock %}</p>
+      </div>
+      <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% for message in messages %}
+        <div class="flash">{{ message }}</div>
+      {% endfor %}
     {% endwith %}
 
     {% block content %}{% endblock %}
-  </div>
+  </main>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

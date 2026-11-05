@@ -9,7 +9,7 @@ matching. It accounts for:
   - Punctuation   ("great!!!" boosts confidence)
   - Star rating   (used as a strong supporting signal when available)
 
-The result is a sentiment label (Positive / Negative / Neutral), a
+The result is a sentiment label (Positive / Negative / Neutral / Mixed), a
 confidence-weighted score, and a breakdown explaining why.
 """
 
@@ -229,6 +229,9 @@ def _score_words(words):
             multiplier *= INTENSIFIERS[words[i - 1]]
         if i > 0 and words[i - 1] in DOWNTONERS:
             multiplier *= DOWNTONERS[words[i - 1]]
+        # Two-word downtoners like "a bit" and "kind of"
+        if i > 1 and f"{words[i - 2]} {words[i - 1]}" in DOWNTONERS:
+            multiplier *= DOWNTONERS[f"{words[i - 2]} {words[i - 1]}"]
         if i > 1 and words[i - 2] in NEGATION_WORDS:
             negated = True
         if i > 0 and words[i - 1] in NEGATION_WORDS:
@@ -308,7 +311,7 @@ def analyze_sentiment(text, rating=None):
     is_mixed = (raw_pos >= 1.5 and raw_neg <= -1.5 and
                 abs(raw_pos + raw_neg) < max(raw_pos, abs(raw_neg)) * 0.6)
 
-    if is_mixed and rating is None:
+    if is_mixed:
         sentiment = "Mixed"
     elif final_score > 0.5:
         sentiment = "Positive"

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_ui.html" import icon, product_table, pending %}
+{% block title %}Reports &amp; Trends{% endblock %}
+{% block page_title %}Reports &amp; Trends{% endblock %}
+{% block page_sub %}How customer sentiment and satisfaction change over time{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block page_actions %}
+<nav class="segmented" aria-label="Trend view">
+  {% for view in views %}
+    <a href="{{ url_for('admin_reports', view=view) }}" class="{{ 'active' if view == trend.granularity }}" {% if view == trend.granularity %}aria-current="true"{% endif %}>{{ view }}</a>
+  {% endfor %}
+</nav>
+{% endblock %}
+
+{% block content %}
+{% if trend.total %}
+  <section class="card">
+    <div class="card-head"><h2>Sentiment Trend</h2></div>
+    <div class="chart-box"><canvas id="sentimentTrendChart" role="img" aria-label="Stacked bars of reviews by sentiment for each period"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Customer Satisfaction</h2></div>
+    <div class="chart-box"><canvas id="satisfactionChart" role="img" aria-label="Lines of positive review share and average rating for each period"></canvas></div>
+  </section>
+{% else %}
+  <section class="card"><p class="empty">No reviews in this period.</p></section>
+{% endif %}
+
+<section class="card card-flush">
+  <div class="card-head"><h2>Product Performance Comparison</h2></div>
+  {{ product_table(products) }}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Download Reports</h2></div>
+  <p class="card-sub" style="margin-bottom: 12px;">Every review with its analysis, as a spreadsheet.</p>
+  <a class="btn btn-quiet" href="{{ url_for('export_csv') }}" style="margin-bottom: 14px;">{{ icon('export') }} Download CSV</a>
+  {{ pending(7, "Formatted summary reports, with trends and recommendations, will be added here.") }}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="chart-data" type="application/json">{{ trend|tojson }}</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

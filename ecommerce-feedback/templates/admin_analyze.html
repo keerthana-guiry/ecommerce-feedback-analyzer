@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_ui.html" import pending, stars %}
+{% block title %}Review Analysis{% endblock %}
+{% block page_title %}Review Analysis{% endblock %}
+{% block page_sub %}Add a review and see how it's analyzed{% endblock %}
+
+{% block content %}
+<section class="grid-even">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Submit a Review</h2></div>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field-row">
+          <div class="field">
+            <label for="product_id">Product</label>
+            <select id="product_id" name="product_id" required>
+              {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="rating">Rating</label>
+            <select id="rating" name="rating" required>
+              <option value="5">5 - Excellent</option>
+              <option value="4">4 - Good</option>
+              <option value="3" selected>3 - Average</option>
+              <option value="2">2 - Poor</option>
+              <option value="1">1 - Terrible</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="review_text">Review</label>
+          <textarea id="review_text" name="review_text" placeholder="Paste or type the customer's review..." required></textarea>
+        </div>
+        <button type="submit">Analyze Review</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Upload a CSV File</h2></div>
+      {{ pending(3, "Bulk upload with validation of each row arrives with review management.") }}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Analysis Result</h2>
+        <p class="card-sub">From the current rule-based engine. VADER replaces it in Phase 4.</p>
+      </div>
+    </div>
+
+    {% if result %}
+      <p class="result-quote">{{ review.review_text }}</p>
+
+      <dl class="result-summary">
+        <div><dt>Sentiment</dt><dd><span class="badge {{ result.sentiment }}">{{ result.sentiment }}</span></dd></div>
+        <div><dt>Confidence</dt><dd>{{ result.confidence }}%</dd></div>
+        <div><dt>Rating</dt><dd>{{ stars(review.rating) }}</dd></div>
+        <div><dt>Emotion</dt><dd>{{ result.emotion or '—' }}</dd></div>
+      </dl>
+
+      <div class="result-section">
+        <h3>Words That Influenced the Result</h3>
+        <div class="tag-row">
+          {% for item in result.contributing_words %}
+            <span class="badge {{ 'Positive' if item.value > 0 else 'Negative' }}">{{ item.word }} ({{ '%+.1f'|format(item.value) }})</span>
+          {% else %}
+            <span class="card-sub">No sentiment words found.</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="result-section">
+        <h3>Product Aspects</h3>
+        <div class="tag-row">
+          {% for aspect, sentiment in result.aspects.items() %}
+            <span class="badge {{ sentiment }}">{{ aspect }}: {{ sentiment }}</span>
+          {% else %}
+            <span class="card-sub">No known product aspects mentioned.</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if result.spam_flags %}
+        <div class="result-section">
+          <h3>Flagged for Human Review</h3>
+          <div class="tag-row">
+            {% for flag in result.spam_flags %}
+              <span class="badge Neutral">{{ flag }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="result-section">
+        <h3>Identified Customer Problems</h3>
+        {{ pending(6, "Automatic complaint detection comes later, along with improved aspect analysis in Phase 5.") }}
+      </div>
+    {% else %}
+      <p class="empty">Submit a review to see its analysis here.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

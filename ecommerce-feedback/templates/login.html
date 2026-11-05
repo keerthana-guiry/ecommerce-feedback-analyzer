@@ -1,30 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Login | Feedback Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-  <div class="auth-box">
-    <h1>Login</h1>
+{% extends "auth_base.html" %}
+{% block title %}Log In{% endblock %}
 
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for message in messages %}
-          <div class="flash">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+{% block content %}
+<h1>Welcome back</h1>
+<p class="page-sub">Log in to your account</p>
 
-    <form method="POST">
-      <input type="text" name="username" placeholder="Username" required>
-      <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Login</button>
-    </form>
-
-    <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
-    <p style="font-size: 0.8rem; color: #888;">Admin login: username <b>admin</b>, password <b>admin123</b></p>
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autocomplete="username" required>
   </div>
-</body>
-</html>
+  <div class="field">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+  </div>
+  <button type="submit">Log In</button>
+</form>
+
+<p class="auth-foot">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+{% endblock %}

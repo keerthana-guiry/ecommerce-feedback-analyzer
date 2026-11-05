@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Local data and secrets
+*.db
+.env
+
+# Uploaded datasets and generated reports
+ecommerce-feedback/uploads/*
+ecommerce-feedback/reports/*
+!ecommerce-feedback/uploads/.gitkeep
+!ecommerce-feedback/reports/.gitkeep

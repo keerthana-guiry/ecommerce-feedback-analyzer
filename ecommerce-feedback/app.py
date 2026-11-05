@@ -1,4 +1,9 @@
+import os
+import secrets
+from math import ceil
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
@@ -6,7 +11,10 @@ import database as db
 from sentiment import analyze_sentiment
 
 app = Flask(__name__)
-app.secret_key = "change-this-secret-key-in-production"
+# Without SECRET_KEY set, a random key means everyone is logged out on restart
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+CSRFProtect(app)
 
 db.init_db()
 
@@ -87,17 +95,24 @@ def logout():
 
 # ---------- Customer routes ----------
 
+VALID_RATINGS = range(1, 6)
+
+
 @app.route("/customer/feedback", methods=["GET", "POST"])
 @login_required
 def leave_feedback():
     products = db.get_all_products()
 
     if request.method == "POST":
-        product_id = request.form.get("product_id")
-        rating = int(request.form.get("rating", 3))
+        product_id = request.form.get("product_id", type=int)
+        rating = request.form.get("rating", type=int)
         review_text = request.form.get("review_text", "").strip()
 
-        if review_text:
+        if not db.get_product_by_id(product_id):
+            flash("Please choose a valid product.")
+        elif rating not in VALID_RATINGS:
+            flash("Please choose a rating from 1 to 5.")
+        elif review_text:
             result = analyze_sentiment(review_text, rating)
             db.add_feedback(
                 session["user_id"], product_id, rating, review_text,
@@ -129,9 +144,11 @@ def edit_feedback(feedback_id):
         return redirect(url_for("feedback_history"))
 
     if request.method == "POST":
-        rating = int(request.form.get("rating", 3))
+        rating = request.form.get("rating", type=int)
         review_text = request.form.get("review_text", "").strip()
-        if review_text:
+        if rating not in VALID_RATINGS:
+            flash("Please choose a rating from 1 to 5.")
+        elif review_text:
             result = analyze_sentiment(review_text, rating)
             db.update_feedback(
                 feedback_id, rating, review_text,
@@ -156,7 +173,7 @@ def delete_feedback(feedback_id):
 @app.route("/feedback/vote/<int:feedback_id>/<vote>", methods=["POST"])
 @login_required
 def cast_vote(feedback_id, vote):
-    if vote not in ("helpful", "not_helpful"):
+    if vote not in ("helpful", "not_helpful") or not db.get_feedback_by_id(feedback_id):
         return redirect(request.referrer or url_for("admin_feedback"))
     db.vote_feedback(feedback_id, session["user_id"], vote)
     return redirect(request.referrer or url_for("admin_feedback"))
@@ -164,11 +181,55 @@ def cast_vote(feedback_id, vote):
 
 # ---------- Admin routes ----------
 
+PERIOD_OPTIONS = (7, 30, 90)
+TREND_VIEWS = ("daily", "weekly", "monthly")
+FEEDBACK_PER_PAGE = 10
+
+
 @app.route("/admin/sentiment")
 @admin_required
 def admin_sentiment():
-    sentiment_counts = db.get_sentiment_counts()
-    return render_template("admin_sentiment.html", sentiment_counts=sentiment_counts)
+    days = request.args.get("days", 30, type=int)
+    if days not in PERIOD_OPTIONS:
+        days = 30
+    return render_template(
+        "admin_sentiment.html",
+        dashboard=db.get_dashboard_data(days),
+        period_options=PERIOD_OPTIONS,
+        products=db.get_product_performance_scores()[:5],
+        keywords=db.get_top_keywords(limit=5),
+        recent_reviews=db.get_recent_feedback()
+    )
+
+
+@app.route("/admin/analyze", methods=["GET", "POST"])
+@admin_required
+def admin_analyze():
+    if request.method == "POST":
+        product_id = request.form.get("product_id", type=int)
+        rating = request.form.get("rating", type=int)
+        review_text = request.form.get("review_text", "").strip()
+
+        if not db.get_product_by_id(product_id):
+            flash("Please choose a valid product.")
+        elif rating not in VALID_RATINGS:
+            flash("Please choose a rating from 1 to 5.")
+        elif not review_text:
+            flash("Please enter the review text.")
+        else:
+            result = analyze_sentiment(review_text, rating)
+            review_id = db.add_feedback(
+                session["user_id"], product_id, rating, review_text,
+                result["sentiment"], result["score"], result["confidence"],
+                result["emotion"], result["spam_score"]
+            )
+            return redirect(url_for("admin_analyze", review=review_id))
+
+    # Show the analysis of the review just saved, recalculated from its stored text
+    review = db.get_feedback_by_id(request.args.get("review", type=int))
+    result = analyze_sentiment(review["review_text"], review["rating"]) if review else None
+    return render_template("admin_analyze.html", products=db.get_all_products(),
+                           review=review, result=result)
 
 
 @app.route("/admin/products")
@@ -180,32 +241,54 @@ def admin_products():
                             trending=trending)
 
 
-@app.route("/admin/insights")
+@app.route("/admin/reports")
 @admin_required
-def admin_insights():
-    keywords = db.get_top_keywords()
-    return render_template("admin_insights.html", keywords=keywords)
+def admin_reports():
+    granularity = request.args.get("view", "daily")
+    if granularity not in TREND_VIEWS:
+        granularity = "daily"
+    return render_template(
+        "admin_reports.html",
+        trend=db.get_sentiment_trend(granularity),
+        views=TREND_VIEWS,
+        products=db.get_product_performance_scores()
+    )
+
+
+@app.route("/settings")
+@login_required
+def settings():
+    return render_template("settings.html")
 
 
 @app.route("/admin/feedback")
 @admin_required
 def admin_feedback():
     product_id = request.args.get("product_id", type=int)
-    sentiment = request.args.get("sentiment")
-    username = request.args.get("username")
+    sentiment = request.args.get("sentiment") or None
+    search = request.args.get("search", "").strip() or None
+    rating = request.args.get("rating", type=int)
+    sort = "oldest" if request.args.get("sort") == "oldest" else "newest"
 
-    if product_id or sentiment or username:
-        all_feedback = db.search_feedback(product_id, sentiment, username)
-    else:
-        all_feedback = db.get_all_feedback()
-
+    all_feedback = db.search_feedback(product_id, sentiment, search, rating,
+                                      oldest_first=sort == "oldest")
     products = db.get_all_products()
+
+    total = len(all_feedback)
+    total_pages = max(ceil(total / FEEDBACK_PER_PAGE), 1)
+    page = min(max(request.args.get("page", 1, type=int), 1), total_pages)
+    first = (page - 1) * FEEDBACK_PER_PAGE
 
     return render_template(
         "admin_feedback.html",
-        feedback=all_feedback,
+        feedback=all_feedback[first:first + FEEDBACK_PER_PAGE],
         products=products,
-        filters={"product_id": product_id, "sentiment": sentiment, "username": username}
+        filters={"product_id": product_id, "sentiment": sentiment, "search": search,
+                 "rating": rating, "sort": sort},
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        first=first
     )
 
 
@@ -237,4 +320,4 @@ def export_csv():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

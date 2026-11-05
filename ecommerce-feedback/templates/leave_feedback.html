@@ -1,30 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Leave Feedback{% endblock %}
+{% block page_title %}Leave Feedback{% endblock %}
+{% block page_sub %}Tell us what you thought about a product{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h2>Leave Feedback on a Product</h2>
+<section class="card card-narrow">
   <form method="POST">
-    <label>Product</label>
-    <select name="product_id" required>
-      {% for product in products %}
-        <option value="{{ product.id }}">{{ product.name }}</option>
-      {% endfor %}
-    </select>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="product_id">Product</label>
+      <select id="product_id" name="product_id" required>
+        {% for product in products %}
+          <option value="{{ product.id }}">{{ product.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <label>Rating</label>
-    <select name="rating" required>
-      <option value="5">5 - Excellent</option>
-      <option value="4">4 - Good</option>
-      <option value="3" selected>3 - Average</option>
-      <option value="2">2 - Poor</option>
-      <option value="1">1 - Terrible</option>
-    </select>
+    <div class="field">
+      <label for="rating">Rating</label>
+      <select id="rating" name="rating" required>
+        <option value="5">5 - Excellent</option>
+        <option value="4">4 - Good</option>
+        <option value="3" selected>3 - Average</option>
+        <option value="2">2 - Poor</option>
+        <option value="1">1 - Terrible</option>
+      </select>
+    </div>
 
-    <label>Your Feedback</label>
-    <textarea name="review_text" placeholder="Tell us what you thought about this product..." required></textarea>
+    <div class="field">
+      <label for="review_text">Your Feedback</label>
+      <textarea id="review_text" name="review_text" placeholder="Tell us what you thought about this product..." required></textarea>
+    </div>
 
     <button type="submit">Submit Feedback</button>
   </form>
-</div>
+</section>
 {% endblock %}
