@@ -60,6 +60,29 @@
 </section>
 
 {% if users is not none %}
+<section class="card card-narrow">
+  <div class="card-head">
+    <div>
+      <h2>Analysis Engine</h2>
+      <p class="card-sub">Which engine produced the results for your reviews</p>
+    </div>
+  </div>
+  <dl class="detail-list">
+    {% for row in model_counts %}
+      <div><dt>{{ row.model_name }}</dt><dd>{{ row.total }} review{{ '' if row.total == 1 else 's' }}</dd></div>
+    {% else %}
+      <div><dt>No reviews yet</dt><dd>—</dd></div>
+    {% endfor %}
+  </dl>
+  {% if outdated_reviews %}
+    <form method="POST" action="{{ url_for('settings.reanalyze') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="upload-help">Older results stay as they are until you run this. Your original reviews and ratings aren't changed.</p>
+      <button type="submit">Re-analyze {{ outdated_reviews }} Review{{ '' if outdated_reviews == 1 else 's' }}</button>
+    </form>
+  {% endif %}
+</section>
+
 <section class="card card-flush">
   <div class="card-head">
     <div>

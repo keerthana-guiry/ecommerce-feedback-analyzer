@@ -13,7 +13,7 @@ SENTIMENTS = ("Positive", "Neutral", "Mixed", "Negative")
 
 REVIEW_COLUMNS = """
     reviews.id, reviews.product_id, reviews.submitted_by, reviews.customer_name, reviews.rating,
-    reviews.review_text, reviews.source, reviews.review_date,
+    reviews.review_text, reviews.language, reviews.source, reviews.review_date,
     products.name AS product_name,
     sentiment_results.sentiment, sentiment_results.score,
     sentiment_results.confidence, sentiment_results.emotion,
@@ -192,10 +192,10 @@ def _insert_review(cursor, product_id, rating, review_text, analysis, submitted_
                    customer_name, source, review_date):
     cursor.execute("""
         INSERT INTO reviews (product_id, submitted_by, customer_name, rating,
-                             review_text, source, review_date)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (product_id, submitted_by, customer_name, rating, review_text, source,
-          review_date or datetime.now()))
+                             review_text, language, source, review_date)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (product_id, submitted_by, customer_name, rating, review_text, analysis["language"],
+          source, review_date or datetime.now()))
     review_id = cursor.lastrowid
     _insert_analysis(cursor, review_id, analysis)
     return review_id
@@ -226,9 +226,45 @@ def update_review(review_id, product_id, rating, review_text, customer_name, ana
             UPDATE reviews SET product_id = %s, rating = %s, review_text = %s, customer_name = %s
             WHERE id = %s
         """, (product_id, rating, review_text, customer_name, review_id))
-        cursor.execute("DELETE FROM sentiment_results WHERE review_id = %s", (review_id,))
-        cursor.execute("DELETE FROM aspect_results WHERE review_id = %s", (review_id,))
-        _insert_analysis(cursor, review_id, analysis)
+        _replace_analysis(cursor, review_id, analysis)
+
+
+def _replace_analysis(cursor, review_id, analysis):
+    cursor.execute("UPDATE reviews SET language = %s WHERE id = %s", (analysis["language"], review_id))
+    cursor.execute("DELETE FROM sentiment_results WHERE review_id = %s", (review_id,))
+    cursor.execute("DELETE FROM aspect_results WHERE review_id = %s", (review_id,))
+    _insert_analysis(cursor, review_id, analysis)
+
+
+def count_reviews_by_model():
+    """How many reviews each analysis engine produced the results for."""
+    with get_cursor() as cursor:
+        cursor.execute("""
+            SELECT model_name, COUNT(*) AS total FROM sentiment_results
+            GROUP BY model_name ORDER BY total DESC
+        """)
+        return cursor.fetchall()
+
+
+def get_reviews_on_old_models(current_models, limit):
+    """Reviews whose results came from an engine that's no longer in use."""
+    placeholders = ", ".join(["%s"] * len(current_models))
+    with get_cursor() as cursor:
+        cursor.execute(f"""
+            SELECT reviews.id, reviews.rating, reviews.review_text {REVIEW_TABLES}
+            WHERE sentiment_results.model_name NOT IN ({placeholders})
+            ORDER BY reviews.id
+            LIMIT %s
+        """, (*current_models, limit))
+        return cursor.fetchall()
+
+
+def save_new_analyses(results):
+    """Replace the analysis of several reviews together. Takes (review_id, analysis)
+    pairs. The original review text and rating aren't changed."""
+    with get_cursor(commit=True) as cursor:
+        for review_id, analysis in results:
+            _replace_analysis(cursor, review_id, analysis)
 
 
 def delete_review(review_id):

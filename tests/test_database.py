@@ -34,7 +34,7 @@ def test_review_and_analysis_are_stored_separately():
         aspects = cursor.fetchall()
 
     assert original == {"review_text": "great camera but terrible battery", "rating": 2}
-    assert sentiment == {"sentiment": "Mixed", "model_name": "rule-based-v1"}
+    assert sentiment == {"sentiment": "Mixed", "model_name": "vader-3.3.2"}
     assert {"aspect": "Battery", "sentiment": "Negative"} in aspects
 
 

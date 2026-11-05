@@ -14,7 +14,7 @@ phase it arrives in.
 | 1 | Dashboard UI | Done |
 | 2 | Backend and MySQL database | Done |
 | 3 | User roles, CSV upload, review management | Done |
-| 4 | Sentiment analysis with VADER | Not started |
+| 4 | Sentiment analysis with VADER | Done |
 | 5 | Aspect-based sentiment analysis | Not started |
 | 6 | Complaint detection and product insights | Not started |
 | 7 | Recommendations and reports | Not started |
@@ -50,14 +50,19 @@ Laptop Backpack,5,Strong zips and very comfortable,Asha,2026-01-31
 ```
 
 **Sentiment Engine**
-- Custom rule-based analyzer for now. VADER replaces it in Phase 4. It considers:
-  - Intensifiers ("very good" scores higher than "good")
-  - Downtoners ("somewhat bad" scores lower in magnitude)
-  - Negation handling ("not good" flips polarity correctly)
-  - Contrast words ("good but slow" weights the part after "but" more)
-  - Punctuation emphasis (exclamation marks boost confidence)
-  - Star rating blended in as a supporting signal
+- [VADER](https://github.com/cjhutto/vaderSentiment), a published dictionary-and-rules method, handles negation, intensifiers, "but", and emoji
+- Added on top of VADER:
+  - Common product-review words its dictionary is missing, like "flimsy" and "overpriced"
+  - Mixed sentiment, found by scoring each part of a review separately, or when the words and stars strongly disagree
+  - The star rating as a supporting signal (70% text, 30% rating)
+- Each result records which engine produced it, and admins can re-analyze older results from Settings
 - Results are never labelled fake. Suspicious reviews are only flagged for a person to check.
+
+**Known Limits of the Sentiment Engine**
+- Confidence shows how strong and consistent the signals are. It isn't a measured chance of being correct, because VADER doesn't produce a probability.
+- No accuracy figure is claimed, because the engine hasn't been measured on a real labelled dataset yet. `tests/labelled_reviews.py` is a small hand-written sanity check, not a measure of accuracy.
+- Dictionary methods miss sarcasm and indirect wording, like "Oh great, another one that broke".
+- Only English text is analyzed. Tamil and Hindi are detected, and those reviews use only the star rating and say so. Other languages written in Latin letters aren't detected and usually score as Neutral.
 
 **Security**
 - Hashed passwords and CSRF protection on every form
@@ -70,6 +75,7 @@ Laptop Backpack,5,Strong zips and very comfortable,Asha,2026-01-31
 ## Tech Stack
 - Python, Flask
 - MySQL
+- VADER (sentiment analysis)
 - Chart.js
 - HTML/CSS/JavaScript (custom, no framework)
 - pytest

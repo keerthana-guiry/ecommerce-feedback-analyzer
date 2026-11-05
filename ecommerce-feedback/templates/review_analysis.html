@@ -79,7 +79,7 @@
     <div class="card-head">
       <div>
         <h2>Analysis Result</h2>
-        <p class="card-sub">From the current rule-based engine. VADER replaces it in Phase 4.</p>
+        <p class="card-sub">Confidence shows how strong and consistent the signals are. It isn't a measured chance of being correct.</p>
       </div>
     </div>
 
@@ -91,18 +91,25 @@
         <div><dt>Confidence</dt><dd>{{ '%.1f'|format(review.confidence) }}%</dd></div>
         <div><dt>Rating</dt><dd>{{ stars(review.rating) }}</dd></div>
         <div><dt>Emotion</dt><dd>{{ review.emotion or '—' }}</dd></div>
+        <div><dt>Analyzed With</dt><dd>{{ review.model_name }}</dd></div>
       </dl>
 
-      <div class="result-section">
-        <h3>Words That Influenced the Result</h3>
-        <div class="tag-row">
-          {% for item in explanation.contributing_words %}
-            <span class="badge {{ 'Positive' if item.value > 0 else 'Negative' }}">{{ item.word }} ({{ '%+.1f'|format(item.value) }})</span>
-          {% else %}
-            <span class="card-sub">No sentiment words found.</span>
-          {% endfor %}
+      {% if review.model_name == 'rating-only' %}
+        <div class="pending"><p>This review's language can't be analyzed yet, so its sentiment comes from the star rating alone. The words weren't scored.</p></div>
+      {% elif review.model_name != explanation.model_name %}
+        <div class="pending"><p>An older engine produced this result. An admin can update it from Settings.</p></div>
+      {% else %}
+        <div class="result-section">
+          <h3>Words That Influenced the Result</h3>
+          <div class="tag-row">
+            {% for item in explanation.contributing_words %}
+              <span class="badge {{ 'Positive' if item.value > 0 else 'Negative' }}">{{ item.word }} ({{ '%+.1f'|format(item.value) }})</span>
+            {% else %}
+              <span class="card-sub">No sentiment words found.</span>
+            {% endfor %}
+          </div>
         </div>
-      </div>
+      {% endif %}
 
       <div class="result-section">
         <h3>Product Aspects</h3>

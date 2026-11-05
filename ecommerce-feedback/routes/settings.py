@@ -5,11 +5,14 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import models
+from nlp.sentiment import CURRENT_MODELS, analyze_sentiment
 from routes.dashboard import PERIOD_OPTIONS
 from utils.auth import admin_required, log_in, login_required
 from utils.validation import password_error, username_error
 
 settings_bp = Blueprint("settings", __name__)
+
+REANALYZE_BATCH_SIZE = 200
 
 
 def _back_to_settings():
@@ -19,8 +22,16 @@ def _back_to_settings():
 @settings_bp.route("/settings")
 @login_required
 def index():
-    users = models.get_all_users() if g.user["role"] == "admin" else None
-    return render_template("settings.html", users=users, period_options=PERIOD_OPTIONS)
+    is_admin = g.user["role"] == "admin"
+    model_counts = models.count_reviews_by_model() if is_admin else None
+    return render_template(
+        "settings.html",
+        users=models.get_all_users() if is_admin else None,
+        model_counts=model_counts,
+        outdated_reviews=sum(row["total"] for row in model_counts or []
+                             if row["model_name"] not in CURRENT_MODELS),
+        period_options=PERIOD_OPTIONS
+    )
 
 
 @settings_bp.route("/settings/profile", methods=["POST"])
@@ -70,6 +81,23 @@ def update_preferences():
         flash("Your preferences were saved.")
     else:
         flash("Please choose one of the listed time periods.")
+    return _back_to_settings()
+
+
+# ---------- Re-analyzing older reviews (admins only) ----------
+
+@settings_bp.route("/settings/reanalyze", methods=["POST"])
+@admin_required
+def reanalyze():
+    """Analyze reviews again if an older engine produced their results. Each batch
+    saves separately, so if this stops early, running it again carries on."""
+    updated = 0
+    while batch := models.get_reviews_on_old_models(CURRENT_MODELS, REANALYZE_BATCH_SIZE):
+        models.save_new_analyses([(review["id"], analyze_sentiment(review["review_text"], review["rating"]))
+                                  for review in batch])
+        updated += len(batch)
+
+    flash(f"Analyzed {updated} reviews again." if updated else "All reviews are already up to date.")
     return _back_to_settings()
 
 

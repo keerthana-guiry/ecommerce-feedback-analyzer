@@ -1,63 +1,67 @@
 """
-Enhanced Sentiment Analysis Engine
-----------------------------------
-A more serious, rule-based sentiment analyzer that goes beyond simple word
-matching. It accounts for:
-  - Intensifiers  ("very good" scores higher than "good")
-  - Downtoners    ("somewhat bad" scores lower in magnitude than "bad")
-  - Negation      ("not good" flips polarity)
-  - Punctuation   ("great!!!" boosts confidence)
-  - Star rating   (used as a strong supporting signal when available)
+Sentiment analysis using VADER, a published dictionary-and-rules method that
+handles negation ("not good"), intensifiers ("very good"), "but" and emoji.
 
-The result is a sentiment label (Positive / Negative / Neutral / Mixed), a
-confidence-weighted score, and a breakdown explaining why.
+On top of VADER, this file adds:
+  - Common product-review words missing from VADER's dictionary
+  - Mixed sentiment, found by scoring each part of a review separately
+  - The star rating as a supporting signal
+  - Language detection, since VADER's dictionary only covers English
+
+"Confidence" here means how strong and consistent the signals are. VADER doesn't
+produce a probability, so it isn't a measured chance of being correct.
 """
 
 import re
 
-# Stored with each result, so it's clear which engine produced it
-MODEL_NAME = "rule-based-v1"
+from vaderSentiment.vaderSentiment import (BOOSTER_DICT, N_SCALAR, NEGATE,
+                                           SentimentIntensityAnalyzer, negated)
 
-POSITIVE_WORDS = {
-    "good": 1, "great": 2, "excellent": 2.5, "amazing": 2.5, "awesome": 2.5,
-    "fantastic": 2.5, "wonderful": 2, "love": 2, "loved": 2, "best": 2.5,
-    "happy": 1.5, "helpful": 1.5, "easy": 1, "smooth": 1, "nice": 1,
-    "perfect": 2.5, "impressive": 2, "friendly": 1.5, "fast": 1,
-    "efficient": 1.5, "clean": 1, "recommend": 2, "satisfied": 1.5,
-    "pleased": 1.5, "superb": 2.5, "brilliant": 2.5, "outstanding": 2.5,
-    "convenient": 1.5, "reliable": 1.5, "enjoyed": 1.5, "durable": 1.5,
-    "worth": 1.5, "sturdy": 1.5, "affordable": 1, "comfortable": 1.5,
-    "genuine": 1.5, "smoothly": 1, "quick": 1, "beautiful": 2
+# Stored with each result, so it's clear what produced it
+MODEL_NAME = "vader-3.3.2"
+RATING_ONLY_MODEL = "rating-only"
+CURRENT_MODELS = (MODEL_NAME, RATING_ONLY_MODEL)
+
+TEXT_WEIGHT = 0.7
+RATING_WEIGHT = 0.3
+
+# Scores run from -1 to 1. VADER's authors suggest 0.05 for short social media
+# posts, but that makes mild wording like "it's okay" count as Positive.
+SENTIMENT_THRESHOLD = 0.25
+
+# Mixed needs a clear opinion in both directions
+MIXED_CLAUSE_STRENGTH = 0.3
+STRONG_TEXT_STRENGTH = 0.4
+# Mixed and Neutral reviews have no clear overall signal
+MAX_UNCLEAR_CONFIDENCE = 60.0
+MAX_RATING_ONLY_CONFIDENCE = 50.0
+
+# Words from product reviews that aren't in VADER's dictionary, on its scale of -4 to 4
+PRODUCT_REVIEW_WORDS = {
+    "smooth": 1, "smoothly": 1, "fast": 1, "quick": 1, "convenient": 1.5, "reliable": 1.5,
+    "durable": 1.5, "sturdy": 1.5, "affordable": 1, "genuine": 1.5, "lightweight": 1,
+    "spacious": 1, "crisp": 1, "responsive": 1,
+    "slow": -1, "unhelpful": -1.5, "issue": -1, "buggy": -1.5, "crashed": -2, "expensive": -1,
+    "unreliable": -2, "mediocre": -1, "flimsy": -1.5, "cheap": -1, "refund": -1,
+    "malfunction": -2.5, "malfunctioning": -2.5, "quit": -1.5, "leaking": -2, "leaks": -2,
+    "stained": -1.5, "incomplete": -1.5, "overpriced": -1.5, "drains": -1.5, "overheats": -2,
+    "overheating": -2, "rusted": -2, "scratched": -1.5, "cracked": -2, "cracks": -1.5,
+    "peeling": -1.5, "wobbly": -1.5, "laggy": -1.5, "glitchy": -1.5, "counterfeit": -2.5,
+    "disconnects": -1.5, "bulky": -1,
 }
 
-NEGATIVE_WORDS = {
-    "bad": -1, "poor": -1.5, "terrible": -2.5, "awful": -2.5, "worst": -3,
-    "hate": -2, "hated": -2, "disappointing": -2, "disappointed": -2,
-    "slow": -1, "confusing": -1.5, "difficult": -1, "hard": -1,
-    "broken": -2, "broke": -2, "useless": -2.5, "annoying": -1.5, "frustrating": -2,
-    "rude": -2, "unhelpful": -1.5, "waste": -2, "problem": -1,
-    "issue": -1, "buggy": -1.5, "crash": -2, "crashed": -2, "expensive": -1,
-    "delayed": -1.5, "unreliable": -2, "horrible": -2.5, "mediocre": -1,
-    "defective": -2.5, "damaged": -2, "flimsy": -1.5, "cheap": -1,
-    "fake": -2.5, "misleading": -2, "scam": -3, "refund": -1,
-    "malfunction": -2.5, "malfunctioning": -2.5, "died": -2, "quit": -1.5,
-    "leaking": -2, "torn": -1.5, "stained": -1.5, "missing": -1.5,
-    "wrong": -1.5, "incomplete": -1.5, "overpriced": -1.5
-}
+# Words VADER scores that are too often filler to list as a review's reasons or
+# complaints, like "no" in "no issues", "pretty" in "pretty bad", or "feels like"
+NOT_REASON_WORDS = {"no", "pretty", "kind", "like"}
 
-INTENSIFIERS = {"very": 1.5, "extremely": 2, "really": 1.4, "so": 1.3,
-                "absolutely": 1.8, "totally": 1.5, "incredibly": 1.8}
+_analyzer = SentimentIntensityAnalyzer()
+_analyzer.lexicon.update(PRODUCT_REVIEW_WORDS)
 
-DOWNTONERS = {"somewhat": 0.6, "slightly": 0.5, "a bit": 0.6,
-              "kind of": 0.6, "fairly": 0.7}
+# Letter ranges for the languages planned next. Other languages written in Latin
+# letters can't be told apart from English this way, and just score as Neutral.
+SCRIPT_RANGES = {"ta": ("஀", "௿"), "hi": ("ऀ", "ॿ")}
 
-NEGATION_WORDS = {"not", "no", "never", "isn't", "wasn't", "don't",
-                   "didn't", "won't", "wouldn't", "cannot", "can't"}
-
-# Words that signal a contrast/turnaround in opinion. The clause AFTER
-# one of these usually carries the reviewer's real, final opinion.
-CONTRAST_WORDS = {"but", "however", "although", "though", "yet",
-                   "except", "still", "nonetheless"}
+CLAUSE_BOUNDARY = re.compile(r"[.!?;]+|\b(?:but|however|although|though|yet|except)\b", re.IGNORECASE)
 
 # ---------- Emotion detection ----------
 # Maps specific words to a more granular emotion than plain +/- sentiment.
@@ -94,11 +98,25 @@ ASPECT_KEYWORDS = {
 }
 
 
+def detect_language(text):
+    """Return a language code from the letters used. Text with no letters,
+    such as only emoji, counts as English because VADER can still score it."""
+    letters = [char for char in text if char.isalpha()]
+    latin = sum(1 for char in letters if char < "ɐ")
+    if not letters or latin / len(letters) >= 0.5:
+        return "en"
+
+    counts = {code: sum(1 for char in letters if low <= char <= high)
+              for code, (low, high) in SCRIPT_RANGES.items()}
+    best = max(counts, key=counts.get)
+    return best if counts[best] > 0 else "other"
+
+
 def detect_emotion(contributing_words):
     """
     Return the emotion whose keyword set best matches the review, based on
     the NEGATION-AWARE contributing words (each already has a signed value
-    from _score_words, so "not good" correctly counts as negative here,
+    from sentiment_words, so "not good" correctly counts as negative here,
     not as the word "good").
     """
     positive_emotions = {"😍 Loved", "😊 Happy"}
@@ -124,9 +142,8 @@ def detect_emotion(contributing_words):
 
 
 def detect_aspects(text):
-    """Return a dict of {aspect: sentiment_label} for every aspect
-    mentioned in the review, scored using the same word-level logic
-    as the main sentiment engine but scoped to nearby words."""
+    """Return a dict of {aspect: sentiment_label} for every aspect mentioned
+    in the review, scoring a small window of words around each mention."""
     words = clean_text(text)
     results = {}
 
@@ -136,15 +153,13 @@ def detect_aspects(text):
         for i, word in enumerate(words):
             if word in keywords:
                 mentioned = True
-                # Look at a small window around the aspect word for sentiment
                 window = words[max(0, i - 3):i + 4]
-                window_score, _ = _score_words(window)
-                aspect_score += window_score
+                aspect_score += _compound(" ".join(window))
 
         if mentioned:
-            if aspect_score > 0.3:
+            if aspect_score > SENTIMENT_THRESHOLD:
                 results[aspect] = "Positive"
-            elif aspect_score < -0.3:
+            elif aspect_score < -SENTIMENT_THRESHOLD:
                 results[aspect] = "Negative"
             else:
                 results[aspect] = "Neutral"
@@ -214,134 +229,120 @@ def clean_text(text):
     return text.split()
 
 
-def _score_words(words):
-    """
-    Score a list of words (already cleaned/tokenized) and return
-    (score, contributing_words). Shared by clause-splitting logic below.
-    """
-    score = 0
-    contributing = []
+def _compound(text):
+    return _analyzer.polarity_scores(text)["compound"]
 
-    i = 0
-    while i < len(words):
-        word = words[i]
-        multiplier = 1
-        negated = False
 
-        if i > 0 and words[i - 1] in INTENSIFIERS:
-            multiplier *= INTENSIFIERS[words[i - 1]]
-        if i > 0 and words[i - 1] in DOWNTONERS:
-            multiplier *= DOWNTONERS[words[i - 1]]
-        # Two-word downtoners like "a bit" and "kind of"
-        if i > 1 and f"{words[i - 2]} {words[i - 1]}" in DOWNTONERS:
-            multiplier *= DOWNTONERS[f"{words[i - 2]} {words[i - 1]}"]
-        if i > 1 and words[i - 2] in NEGATION_WORDS:
-            negated = True
-        if i > 0 and words[i - 1] in NEGATION_WORDS:
-            negated = True
+def sentiment_words(text):
+    """The words in a review that carry sentiment, each with its dictionary
+    value. The value is flipped for a negated word, like "good" in "not good"."""
+    words = clean_text(text)
+    found = []
+    for i, word in enumerate(words):
+        if (word in NEGATE or word in BOOSTER_DICT or word in NOT_REASON_WORDS
+                or word not in _analyzer.lexicon):
+            continue
+        value = _analyzer.lexicon[word]
+        if negated(words[max(0, i - 3):i]):
+            value *= N_SCALAR
+        found.append({"word": word, "value": round(value, 2)})
+    return found
 
-        base = None
-        if word in POSITIVE_WORDS:
-            base = POSITIVE_WORDS[word]
-        elif word in NEGATIVE_WORDS:
-            base = NEGATIVE_WORDS[word]
 
-        if base is not None:
-            value = base * multiplier
-            if negated:
-                value *= -0.8
-            score += value
-            contributing.append({"word": word, "value": round(value, 2)})
+def _clause_scores(text):
+    """Score each part of a review separately, split at sentence ends and contrast words."""
+    clauses = [clause.strip() for clause in CLAUSE_BOUNDARY.split(text)]
+    return [_compound(clause) for clause in clauses if clause]
 
-        i += 1
 
-    return score, contributing
+def _label(score):
+    if score > SENTIMENT_THRESHOLD:
+        return "Positive"
+    if score < -SENTIMENT_THRESHOLD:
+        return "Negative"
+    return "Neutral"
+
+
+def _rating_signal(rating):
+    """Convert a 1-5 star rating to the same -1 to 1 scale as VADER."""
+    return (rating - 3) / 2
+
+
+def _rating_only_result(rating, language, spam_check):
+    """For text VADER can't read. Showing a text score here would be made up,
+    so the result comes from the star rating alone, and says so."""
+    score = _rating_signal(rating) if rating is not None else 0.0
+    return {
+        "sentiment": _label(score),
+        "score": round(score, 2),
+        "text_score": None,
+        "confidence": round(min(abs(score) * 100, MAX_RATING_ONLY_CONFIDENCE), 1),
+        "contributing_words": [],
+        "emotion": None,
+        "aspects": {},
+        "spam_score": spam_check["spam_score"],
+        "spam_flags": spam_check["flags"],
+        "likely_spam": spam_check["likely_spam"],
+        "language": language,
+        "text_analyzed": False,
+        "model_name": RATING_ONLY_MODEL
+    }
 
 
 def analyze_sentiment(text, rating=None):
     """
-    Analyze feedback text (and optional 1-5 star rating) and return a
-    detailed sentiment breakdown. Handles contrast clauses like
-    "but", "however" by weighting the clause after them more heavily,
-    since that usually reflects the reviewer's real final opinion.
+    Analyze review text and an optional 1-5 star rating, returning the sentiment
+    label, scores, the words behind them, emotion, aspects and spam signals.
     """
-    words = clean_text(text)
-
-    # Find contrast word positions and split into clauses
-    split_points = [idx for idx, w in enumerate(words) if w in CONTRAST_WORDS]
-
-    if split_points:
-        clauses = []
-        start = 0
-        for idx in split_points:
-            clauses.append(words[start:idx])
-            start = idx + 1
-        clauses.append(words[start:])
-
-        # Weight later clauses more heavily (0.5x, 1x, 1.5x, 2x...)
-        weighted_score = 0
-        contributing = []
-        num_clauses = len(clauses)
-        for c_idx, clause in enumerate(clauses):
-            clause_score, clause_words = _score_words(clause)
-            weight = 0.5 + (c_idx / max(num_clauses - 1, 1)) * 1.0
-            weighted_score += clause_score * weight
-            contributing.extend(clause_words)
-
-        raw_pos = sum(c["value"] for c in contributing if c["value"] > 0)
-        raw_neg = sum(c["value"] for c in contributing if c["value"] < 0)
-        score = weighted_score
-    else:
-        score, contributing = _score_words(words)
-        raw_pos = sum(c["value"] for c in contributing if c["value"] > 0)
-        raw_neg = sum(c["value"] for c in contributing if c["value"] < 0)
-
-    # Punctuation emphasis
-    exclamations = text.count("!")
-    if exclamations > 0 and score != 0:
-        score *= (1 + min(exclamations, 3) * 0.1)
-
-    text_sentiment_score = score
-
-    # Blend in star rating if provided
-    final_score = text_sentiment_score
-    if rating is not None:
-        rating_score = (rating - 3) * 1.5
-        final_score = (text_sentiment_score * 0.7) + (rating_score * 0.3)
-
-    # Detect "Mixed" sentiment: both strong positive and negative signals
-    # present with no clear winner (common in "great but disappointing" style reviews)
-    is_mixed = (raw_pos >= 1.5 and raw_neg <= -1.5 and
-                abs(raw_pos + raw_neg) < max(raw_pos, abs(raw_neg)) * 0.6)
-
-    if is_mixed:
-        sentiment = "Mixed"
-    elif final_score > 0.5:
-        sentiment = "Positive"
-    elif final_score < -0.5:
-        sentiment = "Negative"
-    else:
-        sentiment = "Neutral"
-
-    confidence = min(abs(final_score) / 3, 1.0) * 100
-    if sentiment == "Mixed":
-        confidence = min(confidence, 60.0)  # mixed reviews are inherently less certain
-
-    emotion = detect_emotion(contributing)
-    aspects = detect_aspects(text)
     spam_check = detect_spam(text)
+    language = detect_language(text)
+    if language != "en":
+        return _rating_only_result(rating, language, spam_check)
+
+    text_score = _compound(text)
+    final_score = text_score
+    rating_signal = None
+    if rating is not None:
+        rating_signal = _rating_signal(rating)
+        final_score = text_score * TEXT_WEIGHT + rating_signal * RATING_WEIGHT
+
+    clauses = _clause_scores(text)
+    strongest_positive = max(clauses, default=0)
+    strongest_negative = min(clauses, default=0)
+
+    # Opposite opinions inside the review, like "great camera but terrible battery"
+    mixed_opinions = (strongest_positive >= MIXED_CLAUSE_STRENGTH and
+                      strongest_negative <= -MIXED_CLAUSE_STRENGTH)
+    # The words and the stars disagree, like "great product" with 1 star
+    rating_conflict = (rating_signal is not None and abs(text_score) >= STRONG_TEXT_STRENGTH and
+                       text_score * rating_signal < 0)
+
+    if mixed_opinions or rating_conflict:
+        sentiment = "Mixed"
+        confidence = min(abs(final_score) * 100, MAX_UNCLEAR_CONFIDENCE)
+        if mixed_opinions:
+            confidence = min(strongest_positive, -strongest_negative) * MAX_UNCLEAR_CONFIDENCE
+    else:
+        sentiment = _label(final_score)
+        confidence = abs(final_score) * 100
+        if sentiment == "Neutral":
+            confidence = (1 - abs(final_score) / SENTIMENT_THRESHOLD) * MAX_UNCLEAR_CONFIDENCE
+
+    contributing = sentiment_words(text)
 
     return {
         "sentiment": sentiment,
         "score": round(final_score, 2),
-        "text_score": round(text_sentiment_score, 2),
+        "text_score": round(text_score, 2),
         "confidence": round(confidence, 1),
         "contributing_words": contributing,
-        "emotion": emotion,
-        "aspects": aspects,
+        "emotion": detect_emotion(contributing),
+        "aspects": detect_aspects(text),
         "spam_score": spam_check["spam_score"],
         "spam_flags": spam_check["flags"],
         "likely_spam": spam_check["likely_spam"],
+        "language": language,
+        "text_analyzed": True,
         "model_name": MODEL_NAME
     }
 
@@ -350,24 +351,5 @@ def extract_keywords(text):
     """Return the sentiment-bearing words found in a piece of text, with
     polarity determined by their NEGATION-AWARE signed value (so "not good"
     correctly counts as a negative/complaint keyword, not praise)."""
-    words = clean_text(text)
-    _, contributing = _score_words(words)
-    found = []
-    for item in contributing:
-        polarity = "positive" if item["value"] > 0 else "negative"
-        found.append((item["word"], polarity))
-    return found
-
-
-if __name__ == "__main__":
-    tests = [
-        ("This product is very good and works great!", None),
-        ("Absolutely terrible, broke after one day.", 1),
-        ("It's okay, does the job.", 3),
-        ("Not bad at all, quite happy with it!!", 5),
-        ("Somewhat disappointing quality.", 2),
-    ]
-    for t, r in tests:
-        result = analyze_sentiment(t, r)
-        print(f"'{t}' (rating={r}) -> {result['sentiment']} "
-              f"(score={result['score']}, confidence={result['confidence']}%)")
+    return [(item["word"], "positive" if item["value"] > 0 else "negative")
+            for item in sentiment_words(text)]
