@@ -98,7 +98,7 @@
 <section class="card card-flush">
   <div class="card-head">
     <h2>Top-Performing Products</h2>
-    <a class="btn btn-quiet" href="{{ url_for('admin_products') }}">View all products</a>
+    <a class="btn btn-quiet" href="{{ url_for('products.index') }}">View all products</a>
   </div>
   {{ product_table(products) }}
 </section>
@@ -106,7 +106,7 @@
 <section class="card">
   <div class="card-head">
     <h2>Recent Reviews</h2>
-    <a class="btn btn-quiet" href="{{ url_for('admin_feedback') }}">View all reviews</a>
+    <a class="btn btn-quiet" href="{{ url_for('reviews.index') }}">View all reviews</a>
   </div>
   {% if recent_reviews %}
     <ul class="review-list">
@@ -116,7 +116,7 @@
             <strong>{{ item.product_name }}</strong>
             {{ stars(item.rating) }}
             <span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span>
-            <span>{{ item.username }} · {{ item.created_at[:10] }}</span>
+            <span>{{ item.customer_name or 'Anonymous' }} · {{ item.review_date.strftime('%Y-%m-%d') }}</span>
           </div>
           {{ item.review_text }}
         </li>

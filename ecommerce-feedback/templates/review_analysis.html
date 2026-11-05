@@ -32,6 +32,10 @@
           </div>
         </div>
         <div class="field">
+          <label for="customer_name">Customer Name (optional)</label>
+          <input type="text" id="customer_name" name="customer_name" maxlength="100">
+        </div>
+        <div class="field">
           <label for="review_text">Review</label>
           <textarea id="review_text" name="review_text" placeholder="Paste or type the customer's review..." required></textarea>
         </div>
@@ -53,20 +57,20 @@
       </div>
     </div>
 
-    {% if result %}
+    {% if review %}
       <p class="result-quote">{{ review.review_text }}</p>
 
       <dl class="result-summary">
-        <div><dt>Sentiment</dt><dd><span class="badge {{ result.sentiment }}">{{ result.sentiment }}</span></dd></div>
-        <div><dt>Confidence</dt><dd>{{ result.confidence }}%</dd></div>
+        <div><dt>Sentiment</dt><dd><span class="badge {{ review.sentiment }}">{{ review.sentiment }}</span></dd></div>
+        <div><dt>Confidence</dt><dd>{{ '%.1f'|format(review.confidence) }}%</dd></div>
         <div><dt>Rating</dt><dd>{{ stars(review.rating) }}</dd></div>
-        <div><dt>Emotion</dt><dd>{{ result.emotion or '—' }}</dd></div>
+        <div><dt>Emotion</dt><dd>{{ review.emotion or '—' }}</dd></div>
       </dl>
 
       <div class="result-section">
         <h3>Words That Influenced the Result</h3>
         <div class="tag-row">
-          {% for item in result.contributing_words %}
+          {% for item in explanation.contributing_words %}
             <span class="badge {{ 'Positive' if item.value > 0 else 'Negative' }}">{{ item.word }} ({{ '%+.1f'|format(item.value) }})</span>
           {% else %}
             <span class="card-sub">No sentiment words found.</span>
@@ -77,19 +81,19 @@
       <div class="result-section">
         <h3>Product Aspects</h3>
         <div class="tag-row">
-          {% for aspect, sentiment in result.aspects.items() %}
-            <span class="badge {{ sentiment }}">{{ aspect }}: {{ sentiment }}</span>
+          {% for item in review.aspects %}
+            <span class="badge {{ item.sentiment }}">{{ item.aspect }}: {{ item.sentiment }}</span>
           {% else %}
             <span class="card-sub">No known product aspects mentioned.</span>
           {% endfor %}
         </div>
       </div>
 
-      {% if result.spam_flags %}
+      {% if explanation.spam_flags %}
         <div class="result-section">
           <h3>Flagged for Human Review</h3>
           <div class="tag-row">
-            {% for flag in result.spam_flags %}
+            {% for flag in explanation.spam_flags %}
               <span class="badge Neutral">{{ flag }}</span>
             {% endfor %}
           </div>

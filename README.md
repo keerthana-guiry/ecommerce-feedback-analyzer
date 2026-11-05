@@ -1,20 +1,27 @@
-# Smart Feedback Analyzer — E-Commerce Edition
+# Ecommerce Feedback Analyzer
 
 *Originally built at a hackathon with team SheCodes — rebuilt and expanded independently
-into a full-featured feedback management system.*
+into a customer intelligence platform.*
 
-A web application where customers can leave feedback on purchased products, and admins
-can monitor sentiment trends across all feedback using visual analytics.
+A web application where business users add customer reviews and see the sentiment,
+product aspects, and trends found in them.
+
+This project is being built in phases. Pages mark anything that isn't built yet with the
+phase it arrives in.
+
+| Phase | Work | Status |
+| --- | --- | --- |
+| 1 | Dashboard UI | Done |
+| 2 | Backend and MySQL database | Done |
+| 3 | User roles, CSV upload, review management | Not started |
+| 4 | Sentiment analysis with VADER | Not started |
+| 5 | Aspect-based sentiment analysis | Not started |
+| 6 | Complaint detection and product insights | Not started |
+| 7 | Recommendations and reports | Not started |
+| 8 | Final testing and deployment | Not started |
 
 ## Features
 
-**Customer Side**
-- Register and log in securely (hashed passwords)
-- Select a product and leave a rating (1-5 stars) + written feedback
-- Automatic sentiment and emotion detection on submission
-- View, edit, and delete your own feedback
-
-**Admin Side**
 - Dashboard with key metrics, sentiment distribution, review trend, top complaint keywords, top products, and recent reviews
 - Review Analysis to submit a review and see its sentiment, confidence, and aspects
 - All Reviews with search, product, sentiment, and rating filters, date sorting, and CSV export
@@ -22,80 +29,98 @@ can monitor sentiment trends across all feedback using visual analytics.
 - Reports & Trends with daily, weekly, and monthly sentiment and satisfaction charts
 
 **Sentiment Engine**
-- Custom rule-based analyzer (not a black-box library) that considers:
+- Custom rule-based analyzer for now. VADER replaces it in Phase 4. It considers:
   - Intensifiers ("very good" scores higher than "good")
   - Downtoners ("somewhat bad" scores lower in magnitude)
   - Negation handling ("not good" flips polarity correctly)
   - Contrast words ("good but slow" weights the part after "but" more)
   - Punctuation emphasis (exclamation marks boost confidence)
-  - Star rating blended in as a supporting signal for higher accuracy
+  - Star rating blended in as a supporting signal
+- Results are never labelled fake. Suspicious reviews are only flagged for a person to check.
 
 **Security**
-- CSRF protection on every form
-- Secret key and admin password are never stored in the code
+- Hashed passwords and CSRF protection on every form
+- Parameterized SQL for every query
+- The app connects to MySQL with a limited account, not root
+- Passwords and keys live in a private `.env` file that Git ignores
 
 ## Tech Stack
 - Python, Flask
-- SQLite (file-based database, zero setup)
-- Chart.js (for admin analytics)
-- HTML/CSS (custom, no framework)
-- pytest (for tests)
+- MySQL
+- Chart.js
+- HTML/CSS/JavaScript (custom, no framework)
+- pytest
+
+## Database
+Original reviews are stored separately from the analysis, so reviews can be analyzed again
+later without changing them.
+
+| Table | Holds |
+| --- | --- |
+| `users` | Admin and analyst accounts |
+| `products` | Products that reviews belong to |
+| `reviews` | The original review, rating, and customer name |
+| `sentiment_results` | One analysis for each review |
+| `aspect_results` | The sentiment of each product aspect in a review |
+| `recommendations` | Business recommendations (from Phase 7) |
 
 ## Project Structure
 ```
 ├── ecommerce-feedback/
-│   ├── app.py              # Main Flask app & routes
-│   ├── sentiment.py        # Sentiment analysis engine
-│   ├── database.py         # SQLite setup & queries
+│   ├── app.py              # Creates the Flask app
+│   ├── setup_database.py   # Creates the databases and the .env file
 │   ├── seed_demo.py        # Optional sample data for demos
-│   ├── static/
-│   │   ├── css/style.css   # Deep Forest + Emerald design
-│   │   └── js/             # Chart.js charts for each page
+│   ├── routes/             # One file of pages for each part of the app
+│   ├── db/
+│   │   ├── config.py       # MySQL connection settings
+│   │   ├── models.py       # All SQL queries
+│   │   └── schema.sql      # Table definitions
+│   ├── nlp/                # Text analysis
+│   ├── utils/              # Login check and safe CSV export
+│   ├── static/             # CSS and Chart.js scripts
 │   ├── templates/          # Page templates
-│   ├── routes/             # Backend routes (from Phase 2)
-│   ├── db/                 # MySQL config and models (from Phase 2)
-│   ├── nlp/                # Sentiment and aspect analysis (from Phase 4)
-│   ├── utils/              # Shared helpers
 │   ├── uploads/            # Uploaded CSV datasets (not tracked by Git)
 │   └── reports/            # Generated reports (not tracked by Git)
 ├── tests/                  # Automated tests
+├── .env.example            # The settings the app expects
 ├── requirements.txt
 └── README.md
 ```
 
 ## How to Run Locally
+You need Python and a running MySQL server.
+
 1. Clone this repository
 2. Install the dependencies: `pip install -r requirements.txt`
-3. Run the app: `python ecommerce-feedback/app.py`
-4. Open `http://127.0.0.1:5000`
+3. Set up the database: `python ecommerce-feedback/setup_database.py`
+4. Run the app: `python ecommerce-feedback/app.py`
+5. Open `http://127.0.0.1:5000`
 
-The first run creates an `admin` account and prints its random password in the terminal.
-Save it, because it's only shown once. Customers can register from the login page.
+Step 3 asks for your MySQL root password, which it doesn't save. It creates the databases,
+a limited MySQL account for the app, the `.env` file, and an `admin` login. The admin password
+prints once, so save it. To choose your own, set `ADMIN_PASSWORD` before running step 3.
 
 ### Demo Data
-To fill the dashboard with sample customers and reviews, run this before starting the app:
+To fill the dashboard with sample reviews, run this once after step 3:
 ```
 python ecommerce-feedback/seed_demo.py
 ```
-If this is the first run, the admin password prints here instead. Use it on a local database
-only, and delete `ecommerce-feedback/feedback.db` to start fresh.
+Use it on a local database only.
 
 ### Optional Settings
-Set these as environment variables before running the app:
+Add these to `.env`:
 
 | Variable | What it does |
 | --- | --- |
-| `ADMIN_PASSWORD` | Uses this password for the admin account when it's first created |
-| `SECRET_KEY` | Keeps users logged in across restarts (otherwise a random key is used) |
 | `FLASK_DEBUG` | Set to `1` to turn on debug mode for local development only |
-| `FEEDBACK_DB` | Path to the database file (defaults to `ecommerce-feedback/feedback.db`) |
 
 ## Running the Tests
+The tests use the separate `ecommerce_feedback_test` database, so they never touch your real data.
+MySQL must be running and step 3 above must be done first.
 ```
 python -m pytest
 ```
 
 ## Example
-A customer submits: *"Absolutely terrible, broke after one day."* with a 1-star rating.
-The system detects: **Negative** (high confidence), and it appears on the admin
-dashboard's sentiment chart.
+A review with a 1-star rating says: *"Absolutely terrible, broke after one day."*
+The app stores it, detects **Negative** with its confidence, and adds it to the dashboard charts.

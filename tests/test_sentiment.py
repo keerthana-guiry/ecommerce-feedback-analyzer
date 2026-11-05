@@ -1,6 +1,6 @@
 import pytest
 
-from sentiment import analyze_sentiment, extract_keywords
+from nlp.sentiment import analyze_sentiment, extract_keywords
 
 
 @pytest.mark.parametrize("text, rating, expected", [

@@ -5,11 +5,11 @@
 {% block page_sub %}Search, filter and export every customer review{% endblock %}
 
 {% block page_actions %}
-<a class="btn btn-quiet" href="{{ url_for('export_csv') }}">{{ icon('export') }} Export CSV</a>
+<a class="btn btn-quiet" href="{{ url_for('reviews.export') }}">{{ icon('export') }} Export CSV</a>
 {% endblock %}
 
 {% macro page_url(number) -%}
-  {{ url_for('admin_feedback', page=number, product_id=filters.product_id or none, sentiment=filters.sentiment or none, search=filters.search or none, rating=filters.rating or none, sort=filters.sort if filters.sort == 'oldest' else none) }}
+  {{ url_for('reviews.index', page=number, product_id=filters.product_id or none, sentiment=filters.sentiment or none, search=filters.search or none, rating=filters.rating or none, sort=filters.sort if filters.sort == 'oldest' else none) }}
 {%- endmacro %}
 
 {% block content %}
@@ -56,10 +56,10 @@
       </select>
     </div>
     <button type="submit">Apply</button>
-    <a class="btn btn-quiet" href="{{ url_for('admin_feedback') }}">Clear</a>
+    <a class="btn btn-quiet" href="{{ url_for('reviews.index') }}">Clear</a>
   </form>
 
-  {% if feedback %}
+  {% if reviews %}
     <div class="table-wrap">
       <table>
         <thead>
@@ -70,37 +70,24 @@
             <th>Review</th>
             <th>Sentiment</th>
             <th class="num">Confidence</th>
-            <th>Helpful</th>
             <th>Date</th>
           </tr>
         </thead>
         <tbody>
-          {% for item in feedback %}
+          {% for item in reviews %}
           <tr>
-            <td><div class="who"><span class="avatar">{{ initials(item.username) }}</span>{{ item.username }}</div></td>
+            <td><div class="who"><span class="avatar">{{ initials(item.customer_name or 'Anonymous') }}</span>{{ item.customer_name or 'Anonymous' }}</div></td>
             <td class="nowrap">{{ item.product_name }}</td>
             <td>{{ stars(item.rating) }}</td>
             <td class="review">
               {{ item.review_text }}
-              {% if item.spam_score and item.spam_score >= 50 %}
+              {% if item.spam_score >= 50 %}
                 <br><span class="badge Neutral flag">Flagged for review ({{ item.spam_score }}%)</span>
               {% endif %}
             </td>
             <td><span class="badge {{ item.sentiment }}">{{ item.sentiment }}</span></td>
-            <td class="num">{{ item.confidence }}%</td>
-            <td>
-              <div class="actions">
-                <form method="POST" action="{{ url_for('cast_vote', feedback_id=item.id, vote='helpful') }}" class="inline-form">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="vote" aria-label="Mark as helpful">{{ icon('thumb-up') }} {{ item.helpful_votes or 0 }}</button>
-                </form>
-                <form method="POST" action="{{ url_for('cast_vote', feedback_id=item.id, vote='not_helpful') }}" class="inline-form">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="vote" aria-label="Mark as not helpful">{{ icon('thumb-down') }} {{ item.not_helpful_votes or 0 }}</button>
-                </form>
-              </div>
-            </td>
-            <td class="nowrap" title="{{ item.created_at }}">{{ item.created_at[:10] }}</td>
+            <td class="num">{{ '%.1f'|format(item.confidence) }}%</td>
+            <td class="nowrap" title="{{ item.review_date }}">{{ item.review_date.strftime('%Y-%m-%d') }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -108,7 +95,7 @@
     </div>
 
     <div class="table-foot">
-      <span>Showing {{ first + 1 }} to {{ first + feedback|length }} of {{ total }} results</span>
+      <span>Showing {{ first + 1 }} to {{ first + reviews|length }} of {{ total }} results</span>
       <nav class="pagination" aria-label="Pages">
         {% if page > 1 %}
           <a href="{{ page_url(page - 1) }}" aria-label="Previous page">{{ icon('left') }}</a>

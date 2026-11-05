@@ -16,17 +16,12 @@
     <div class="brand">{{ icon('logo') }}<span><small>Ecommerce</small>Feedback Analyzer</span></div>
 
     <nav class="side-nav" aria-label="Main">
-      {% if session.get('role') == 'admin' %}
-        <a href="{{ url_for('admin_sentiment') }}" class="{{ 'active' if request.endpoint == 'admin_sentiment' }}">{{ icon('dashboard') }} Dashboard</a>
-        <a href="{{ url_for('admin_analyze') }}" class="{{ 'active' if request.endpoint == 'admin_analyze' }}">{{ icon('analyze') }} Review Analysis</a>
-        <a href="{{ url_for('admin_feedback') }}" class="{{ 'active' if request.endpoint == 'admin_feedback' }}">{{ icon('message') }} All Reviews</a>
-        <a href="{{ url_for('admin_products') }}" class="{{ 'active' if request.endpoint == 'admin_products' }}">{{ icon('box') }} Product Insights</a>
-        <a href="{{ url_for('admin_reports') }}" class="{{ 'active' if request.endpoint == 'admin_reports' }}">{{ icon('chart') }} Reports &amp; Trends</a>
-      {% else %}
-        <a href="{{ url_for('leave_feedback') }}" class="{{ 'active' if request.endpoint == 'leave_feedback' }}">{{ icon('pencil') }} Leave Feedback</a>
-        <a href="{{ url_for('feedback_history') }}" class="{{ 'active' if request.endpoint in ('feedback_history', 'edit_feedback') }}">{{ icon('clock') }} History</a>
-      {% endif %}
-      <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' }}">{{ icon('settings') }} Settings</a>
+      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">{{ icon('dashboard') }} Dashboard</a>
+      <a href="{{ url_for('reviews.analyze') }}" class="{{ 'active' if request.endpoint == 'reviews.analyze' }}">{{ icon('analyze') }} Review Analysis</a>
+      <a href="{{ url_for('reviews.index') }}" class="{{ 'active' if request.endpoint == 'reviews.index' }}">{{ icon('message') }} All Reviews</a>
+      <a href="{{ url_for('products.index') }}" class="{{ 'active' if request.endpoint == 'products.index' }}">{{ icon('box') }} Product Insights</a>
+      <a href="{{ url_for('reports.index') }}" class="{{ 'active' if request.endpoint == 'reports.index' }}">{{ icon('chart') }} Reports &amp; Trends</a>
+      <a href="{{ url_for('settings.index') }}" class="{{ 'active' if request.endpoint == 'settings.index' }}">{{ icon('settings') }} Settings</a>
     </nav>
 
     <div class="side-user">
@@ -35,7 +30,7 @@
         <div class="side-user-name">{{ session.get('username', '') }}</div>
         <div class="side-user-role">{{ session.get('role', '') }}</div>
       </div>
-      <a href="{{ url_for('logout') }}" title="Log out" aria-label="Log out">{{ icon('logout') }}</a>
+      <a href="{{ url_for('auth.logout') }}" title="Log out" aria-label="Log out">{{ icon('logout') }}</a>
     </div>
   </aside>
 

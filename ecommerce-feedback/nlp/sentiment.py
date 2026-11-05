@@ -15,6 +15,9 @@ confidence-weighted score, and a breakdown explaining why.
 
 import re
 
+# Stored with each result, so it's clear which engine produced it
+MODEL_NAME = "rule-based-v1"
+
 POSITIVE_WORDS = {
     "good": 1, "great": 2, "excellent": 2.5, "amazing": 2.5, "awesome": 2.5,
     "fantastic": 2.5, "wonderful": 2, "love": 2, "loved": 2, "best": 2.5,
@@ -338,7 +341,8 @@ def analyze_sentiment(text, rating=None):
         "aspects": aspects,
         "spam_score": spam_check["spam_score"],
         "spam_flags": spam_check["flags"],
-        "likely_spam": spam_check["likely_spam"]
+        "likely_spam": spam_check["likely_spam"],
+        "model_name": MODEL_NAME
     }
 
 

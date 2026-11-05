@@ -11,7 +11,7 @@
 {% block page_actions %}
 <nav class="segmented" aria-label="Trend view">
   {% for view in views %}
-    <a href="{{ url_for('admin_reports', view=view) }}" class="{{ 'active' if view == trend.granularity }}" {% if view == trend.granularity %}aria-current="true"{% endif %}>{{ view }}</a>
+    <a href="{{ url_for('reports.index', view=view) }}" class="{{ 'active' if view == trend.granularity }}" {% if view == trend.granularity %}aria-current="true"{% endif %}>{{ view }}</a>
   {% endfor %}
 </nav>
 {% endblock %}
@@ -39,7 +39,7 @@
 <section class="card">
   <div class="card-head"><h2>Download Reports</h2></div>
   <p class="card-sub" style="margin-bottom: 12px;">Every review with its analysis, as a spreadsheet.</p>
-  <a class="btn btn-quiet" href="{{ url_for('export_csv') }}" style="margin-bottom: 14px;">{{ icon('export') }} Download CSV</a>
+  <a class="btn btn-quiet" href="{{ url_for('reviews.export') }}" style="margin-bottom: 14px;">{{ icon('export') }} Download CSV</a>
   {{ pending(7, "Formatted summary reports, with trends and recommendations, will be added here.") }}
 </section>
 {% endblock %}

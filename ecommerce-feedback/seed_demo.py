@@ -1,20 +1,17 @@
 """
-Fills a local database with sample customers and reviews so the admin
-dashboard has something to show. For demos only - run it once with:
+Fills a local database with sample reviews so the dashboard has something to
+show. For demos only. Run setup_database.py first, then run this once:
 
     python ecommerce-feedback/seed_demo.py
 """
 
 import random
-import secrets
 from datetime import datetime, timedelta
 
-from werkzeug.security import generate_password_hash
+from db import models
+from nlp.sentiment import analyze_sentiment
 
-import database as db
-from sentiment import analyze_sentiment
-
-DEMO_CUSTOMERS = ["asha", "ravi", "meera", "john", "fatima", "wei", "carlos", "nina"]
+DEMO_CUSTOMERS = ["Asha", "Ravi", "Meera", "John", "Fatima", "Wei", "Carlos", "Nina"]
 
 # (rating, review text)
 REVIEWS = [
@@ -45,18 +42,12 @@ HISTORY_DAYS = 90
 
 
 def seed():
-    db.init_db()
-    if db.get_user_by_username(DEMO_CUSTOMERS[0]):
-        print("Demo data already exists, nothing to do.")
+    if models.count_reviews() > 0:
+        print("This database already has reviews, so no demo data was added.")
         return
 
-    for name in DEMO_CUSTOMERS:
-        # Demo customers exist only to own reviews, so nobody needs their password
-        db.create_user(name, generate_password_hash(secrets.token_urlsafe(16)))
-
     rng = random.Random(7)
-    user_ids = [db.get_user_by_username(name)["id"] for name in DEMO_CUSTOMERS]
-    product_ids = [p["id"] for p in db.get_all_products()]
+    product_ids = [product["id"] for product in models.get_all_products()]
     now = datetime.now()
     created = 0
 
@@ -70,17 +61,14 @@ def seed():
             is_good = rng.random() < PRODUCT_QUALITY[index] + progress * 0.1 - 0.05
             weights = GOOD_WEIGHTS if is_good else POOR_WEIGHTS
             rating, text = rng.choices(REVIEWS, weights=weights)[0]
-            result = analyze_sentiment(text, rating)
-            when = now - timedelta(days=days_ago, minutes=rng.randint(0, 600))
-            db.add_feedback(
-                rng.choice(user_ids), product_ids[index], rating, text,
-                result["sentiment"], result["score"], result["confidence"],
-                result["emotion"], result["spam_score"],
-                created_at=when.strftime("%Y-%m-%d %H:%M")
+            models.add_review(
+                product_ids[index], rating, text, analyze_sentiment(text, rating),
+                customer_name=rng.choice(DEMO_CUSTOMERS),
+                review_date=now - timedelta(days=days_ago, minutes=rng.randint(0, 600))
             )
             created += 1
 
-    print(f"Added {len(DEMO_CUSTOMERS)} demo customers and {created} reviews.")
+    print(f"Added {created} demo reviews.")
 
 
 if __name__ == "__main__":
